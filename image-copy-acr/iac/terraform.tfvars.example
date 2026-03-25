@@ -1,0 +1,17 @@
+name                = "image-copy"
+location            = "eastus"
+resource_group_name = "image-copy-rg"
+
+registry_name                = "myregistry"
+registry_resource_group_name = "shared-registry-rg"
+registry_server              = "myregistry.azurecr.io"
+image                        = "myregistry.azurecr.io/image-copy-acr:latest"
+
+group_name = "your.org"
+group      = "replace-with-chainguard-group-id"
+identity   = "replace-with-chainguard-identity-id"
+dst_repo   = "myregistry.azurecr.io/mirrors"
+oidc_token = "replace-me"
+
+ignore_referrers  = true
+verify_signatures = false
