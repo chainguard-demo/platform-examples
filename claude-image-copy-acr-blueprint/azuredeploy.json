@@ -1,0 +1,369 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "description": "Deploys ACR, Key Vault, ACR Task (auto-triggered via deploymentScript), and Container App for cgr-image-copy:v1"
+  },
+  "parameters": {
+    "containerRegistryName": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 50,
+      "metadata": { "description": "Globally unique ACR name (5-50 alphanumeric chars)." }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": { "description": "Azure region for all resources." }
+    },
+    "keyVaultName": {
+      "type": "string",
+      "defaultValue": "[concat('kv-cgr-', uniqueString(resourceGroup().id))]",
+      "metadata": { "description": "Globally unique Key Vault name." }
+    },
+    "containerAppEnvironmentName": {
+      "type": "string",
+      "defaultValue": "cgr-container-env",
+      "metadata": { "description": "Container Apps Managed Environment name." }
+    },
+    "containerAppName": {
+      "type": "string",
+      "defaultValue": "cgr-image-copy-app",
+      "metadata": { "description": "Container App name." }
+    },
+    "gitRepoUrl": {
+      "type": "string",
+      "metadata": { "description": "HTTPS URL of your Git repo (e.g. https://github.com/org/repo)." }
+    },
+    "gitRepoBranch": {
+      "type": "string",
+      "defaultValue": "main",
+      "metadata": { "description": "Git branch to build from." }
+    },
+    "dockerfilePath": {
+      "type": "string",
+      "defaultValue": "Dockerfile",
+      "metadata": { "description": "Relative path to the Dockerfile in the repo." }
+    },
+    "gitRepoContextPath": {
+      "type": "string",
+      "defaultValue": ".",
+      "metadata": { "description": "Docker build context path relative to repo root." }
+    }
+  },
+  "variables": {
+    "acrTaskName": "build-cgr-image-copy",
+    "imageName": "cgr-image-copy:v1",
+    "chainguardSecretName": "chainguard-oidc-token",
+    "acrPullRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')]",
+    "kvSecretsUserRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')]",
+    "acrPushRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '8311e382-0749-4cb8-b61a-304f252e45ec')]",
+    "contributorRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b24988ac-6180-42a0-ab88-20f7382dd24c')]",
+    "lawName": "[concat('law-', parameters('containerAppName'))]",
+    "appIdentityName": "[concat(parameters('containerAppName'), '-identity')]",
+    "scriptIdentityName": "[concat('script-runner-identity-', uniqueString(resourceGroup().id))]",
+    "deploymentScriptName": "trigger-acr-task-build",
+    "scriptStorageAccountName": "[concat('stscript', uniqueString(resourceGroup().id))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.OperationalInsights/workspaces",
+      "apiVersion": "2022-10-01",
+      "name": "[variables('lawName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "sku": { "name": "PerGB2018" },
+        "retentionInDays": 30
+      }
+    },
+    {
+      "type": "Microsoft.ContainerRegistry/registries",
+      "apiVersion": "2023-07-01",
+      "name": "[parameters('containerRegistryName')]",
+      "location": "[parameters('location')]",
+      "sku": { "name": "Standard" },
+      "identity": { "type": "SystemAssigned" },
+      "properties": {
+        "adminUserEnabled": false,
+        "publicNetworkAccess": "Enabled",
+        "zoneRedundancy": "Disabled"
+      }
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults",
+      "apiVersion": "2023-07-01",
+      "name": "[parameters('keyVaultName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "sku": { "family": "A", "name": "standard" },
+        "tenantId": "[subscription().tenantId]",
+        "enableRbacAuthorization": true,
+        "enableSoftDelete": true,
+        "softDeleteRetentionInDays": 90,
+        "enabledForDeployment": false,
+        "enabledForDiskEncryption": false,
+        "enabledForTemplateDeployment": false,
+        "publicNetworkAccess": "Enabled"
+      }
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[concat(parameters('keyVaultName'), '/', variables('chainguardSecretName'))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+      ],
+      "properties": {
+        "value": "REPLACE_ME_WITH_CHAINGUARD_OIDC_TOKEN",
+        "attributes": { "enabled": true },
+        "contentType": "text/plain"
+      }
+    },
+    {
+      "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+      "apiVersion": "2023-01-31",
+      "name": "[variables('appIdentityName')]",
+      "location": "[parameters('location')]"
+    },
+    {
+      "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+      "apiVersion": "2023-01-31",
+      "name": "[variables('scriptIdentityName')]",
+      "location": "[parameters('location')]",
+      "metadata": {
+        "description": "Dedicated identity for the deploymentScript runner. Needs Contributor on the ACR to invoke az acr task run."
+      }
+    },
+    {
+      "type": "Microsoft.App/managedEnvironments",
+      "apiVersion": "2023-05-01",
+      "name": "[parameters('containerAppEnvironmentName')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.OperationalInsights/workspaces', variables('lawName'))]"
+      ],
+      "properties": {
+        "appLogsConfiguration": {
+          "destination": "log-analytics",
+          "logAnalyticsConfiguration": {
+            "customerId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', variables('lawName'))).customerId]",
+            "sharedKey": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', variables('lawName')), '2022-10-01').primarySharedKey]"
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "name": "[guid(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName')), variables('appIdentityName'), variables('acrPullRoleId'))]",
+      "scope": "[resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName'))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName'))]",
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('appIdentityName'))]"
+      ],
+      "properties": {
+        "roleDefinitionId": "[variables('acrPullRoleId')]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('appIdentityName'))).principalId]",
+        "principalType": "ServicePrincipal"
+      }
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "name": "[guid(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), variables('appIdentityName'), variables('kvSecretsUserRoleId'))]",
+      "scope": "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('appIdentityName'))]"
+      ],
+      "properties": {
+        "roleDefinitionId": "[variables('kvSecretsUserRoleId')]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('appIdentityName'))).principalId]",
+        "principalType": "ServicePrincipal"
+      }
+    },
+    {
+      "comments": "Gives the script runner identity Contributor on the ACR so it can call az acr task run and az acr task logs.",
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "name": "[guid(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName')), variables('scriptIdentityName'), variables('contributorRoleId'))]",
+      "scope": "[resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName'))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName'))]",
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('scriptIdentityName'))]"
+      ],
+      "properties": {
+        "roleDefinitionId": "[variables('contributorRoleId')]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('scriptIdentityName'))).principalId]",
+        "principalType": "ServicePrincipal"
+      }
+    },
+    {
+      "type": "Microsoft.ContainerRegistry/registries/tasks",
+      "apiVersion": "2019-06-01-preview",
+      "name": "[concat(parameters('containerRegistryName'), '/', variables('acrTaskName'))]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName'))]"
+      ],
+      "identity": { "type": "SystemAssigned" },
+      "properties": {
+        "platform": {
+          "os": "Linux",
+          "architecture": "amd64"
+        },
+        "agentConfiguration": { "cpu": 2 },
+        "step": {
+          "type": "Docker",
+          "dockerFilePath": "[parameters('dockerfilePath')]",
+          "contextPath": "[concat(parameters('gitRepoUrl'), '#', parameters('gitRepoBranch'), ':', parameters('gitRepoContextPath'))]",
+          "imageNames": [ "[variables('imageName')]" ],
+          "isPushEnabled": true,
+          "noCache": false,
+          "arguments": []
+        },
+        "trigger": {
+          "sourceTriggers": [],
+          "timerTriggers": [],
+          "baseImageTrigger": {
+            "name": "defaultBaseimageTriggerName",
+            "baseImageTriggerType": "Runtime",
+            "updateTriggerPayloadType": "Default",
+            "status": "Enabled"
+          }
+        },
+        "isSystemTask": false,
+        "status": "Enabled",
+        "timeout": 3600
+      }
+    },
+    {
+      "comments": "Runs 'az acr task run' automatically during deployment. Uses a dedicated managed identity with Contributor on the ACR. The script polls until the task run completes so downstream resources (Container App) know the image is ready.",
+      "type": "Microsoft.Resources/deploymentScripts",
+      "apiVersion": "2023-08-01",
+      "name": "[variables('deploymentScriptName')]",
+      "location": "[parameters('location')]",
+      "kind": "AzureCLI",
+      "dependsOn": [
+        "[resourceId('Microsoft.ContainerRegistry/registries/tasks', parameters('containerRegistryName'), variables('acrTaskName'))]",
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('scriptIdentityName'))]",
+        "[resourceId('Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName')), variables('scriptIdentityName'), variables('contributorRoleId')))]"
+      ],
+      "identity": {
+        "type": "UserAssigned",
+        "userAssignedIdentities": {
+          "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('scriptIdentityName'))]": {}
+        }
+      },
+      "properties": {
+        "azCliVersion": "2.59.0",
+        "retentionInterval": "PT2H",
+        "timeout": "PT30M",
+        "cleanupPreference": "OnSuccess",
+        "scriptContent": "set -e\n\nREGISTRY=\"$REGISTRY_NAME\"\nTASK=\"$TASK_NAME\"\n\necho \"[deploymentScript] Triggering ACR Task: $TASK on registry: $REGISTRY\"\n\nRUN_ID=$(az acr task run \\\n  --registry \"$REGISTRY\" \\\n  --name \"$TASK\" \\\n  --no-wait \\\n  --query runId \\\n  --output tsv)\n\necho \"[deploymentScript] Task run queued with run ID: $RUN_ID\"\n\n# Poll for completion (max 25 minutes; ACR build timeout is 1h but we want to fail fast)\nMAX_WAIT=1500\nELAPSED=0\nINTERVAL=20\n\nwhile [ $ELAPSED -lt $MAX_WAIT ]; do\n  STATUS=$(az acr task show-run \\\n    --registry \"$REGISTRY\" \\\n    --run-id \"$RUN_ID\" \\\n    --query status \\\n    --output tsv 2>/dev/null || echo \"Waiting\")\n\n  echo \"[deploymentScript] Run $RUN_ID status: $STATUS (${ELAPSED}s elapsed)\"\n\n  if [ \"$STATUS\" = \"Succeeded\" ]; then\n    echo \"[deploymentScript] ACR Task run succeeded. Image cgr-image-copy:v1 is available in $REGISTRY.\"\n    echo \"{\\\"runId\\\":\\\"$RUN_ID\\\",\\\"status\\\":\\\"Succeeded\\\"}\" > $AZ_SCRIPTS_OUTPUT_PATH\n    exit 0\n  fi\n\n  if [ \"$STATUS\" = \"Failed\" ] || [ \"$STATUS\" = \"Canceled\" ] || [ \"$STATUS\" = \"Error\" ]; then\n    echo \"[deploymentScript] ACR Task run $STATUS. Check ACR run logs:\"\n    az acr task logs --registry \"$REGISTRY\" --run-id \"$RUN_ID\" || true\n    echo \"{\\\"runId\\\":\\\"$RUN_ID\\\",\\\"status\\\":\\\"$STATUS\\\"}\" > $AZ_SCRIPTS_OUTPUT_PATH\n    exit 1\n  fi\n\n  sleep $INTERVAL\n  ELAPSED=$((ELAPSED + INTERVAL))\ndone\n\necho \"[deploymentScript] Timed out waiting for ACR Task run $RUN_ID after ${MAX_WAIT}s.\"\nexit 1\n",
+        "environmentVariables": [
+          {
+            "name": "REGISTRY_NAME",
+            "value": "[parameters('containerRegistryName')]"
+          },
+          {
+            "name": "TASK_NAME",
+            "value": "[variables('acrTaskName')]"
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.App/containerApps",
+      "apiVersion": "2023-05-01",
+      "name": "[parameters('containerAppName')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.App/managedEnvironments', parameters('containerAppEnvironmentName'))]",
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('appIdentityName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), variables('chainguardSecretName'))]",
+        "[resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName'))]",
+        "[resourceId('Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName')), variables('appIdentityName'), variables('acrPullRoleId')))]",
+        "[resourceId('Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), variables('appIdentityName'), variables('kvSecretsUserRoleId')))]",
+        "[resourceId('Microsoft.Resources/deploymentScripts', variables('deploymentScriptName'))]"
+      ],
+      "identity": {
+        "type": "UserAssigned",
+        "userAssignedIdentities": {
+          "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('appIdentityName'))]": {}
+        }
+      },
+      "properties": {
+        "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', parameters('containerAppEnvironmentName'))]",
+        "configuration": {
+          "secrets": [
+            {
+              "name": "chainguard-oidc-token",
+              "keyVaultUrl": "[reference(resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), variables('chainguardSecretName'))).secretUri]",
+              "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('appIdentityName'))]"
+            }
+          ],
+          "registries": [
+            {
+              "server": "[concat(parameters('containerRegistryName'), '.azurecr.io')]",
+              "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('appIdentityName'))]"
+            }
+          ],
+          "ingress": {
+            "external": false,
+            "targetPort": 8080,
+            "transport": "auto"
+          }
+        },
+        "template": {
+          "containers": [
+            {
+              "name": "cgr-image-copy",
+              "image": "[concat(parameters('containerRegistryName'), '.azurecr.io/', variables('imageName'))]",
+              "env": [
+                {
+                  "name": "CHAINGUARD_OIDC_TOKEN",
+                  "secretRef": "chainguard-oidc-token"
+                }
+              ],
+              "resources": {
+                "cpu": 0.5,
+                "memory": "1Gi"
+              }
+            }
+          ],
+          "scale": {
+            "minReplicas": 1,
+            "maxReplicas": 1
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "containerRegistryLoginServer": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName'))).loginServer]"
+    },
+    "keyVaultName": {
+      "type": "string",
+      "value": "[parameters('keyVaultName')]"
+    },
+    "keyVaultUri": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))).vaultUri]"
+    },
+    "containerAppFqdn": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.App/containerApps', parameters('containerAppName'))).configuration.ingress.fqdn]"
+    },
+    "acrTaskRunId": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deploymentScripts', variables('deploymentScriptName'))).outputs.runId]"
+    },
+    "updateSecretCommand": {
+      "type": "string",
+      "value": "[concat('az keyvault secret set --vault-name ', parameters('keyVaultName'), ' --name chainguard-oidc-token --value <YOUR_TOKEN>')]"
+    }
+  }
+}
