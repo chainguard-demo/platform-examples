@@ -160,9 +160,6 @@
           "workloadName": {
             "value": "[parameters('workloadName')]"
           },
-          "containerImage": {
-            "value": "[parameters('containerImage')]"
-          },
           "containerCpu": {
             "value": "[parameters('containerCpu')]"
           },
@@ -220,9 +217,6 @@
               "type": "string"
             },
             "workloadName": {
-              "type": "string"
-            },
-            "containerImage": {
               "type": "string"
             },
             "containerCpu": {
@@ -350,7 +344,7 @@
                   "containers": [
                     {
                       "name": "image-copy-acr",
-                      "image": "[parameters('containerImage')]",
+                      "image": "[concat(reference(format('/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.ContainerRegistry/registries/{2}', subscription().subscriptionId, parameters('acrResourceGroupName'), parameters('acrName')), '2023-07-01').loginServer, '/cgr-image-copy:v1')]",
                       "env": "[if(empty(parameters('chainguardOidcToken')), createArray(createObject('name', 'ISSUER_URL', 'value', parameters('issuerUrl')), createObject('name', 'API_ENDPOINT', 'value', parameters('apiEndpoint')), createObject('name', 'GROUP_NAME', 'value', parameters('groupName')), createObject('name', 'GROUP', 'value', parameters('groupId')), createObject('name', 'IDENTITY', 'value', parameters('identityId')), createObject('name', 'DST_REPO', 'value', parameters('dstRepoPrefix')), createObject('name', 'ACR_REGISTRY', 'value', reference(format('/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.ContainerRegistry/registries/{2}', subscription().subscriptionId, parameters('acrResourceGroupName'), parameters('acrName')), '2023-07-01').loginServer), createObject('name', 'IGNORE_REFERRERS', 'value', string(parameters('ignoreReferrers'))), createObject('name', 'VERIFY_SIGNATURES', 'value', string(parameters('verifySignatures'))), createObject('name', 'PORT', 'value', string(parameters('containerPort')))), createArray(createObject('name', 'ISSUER_URL', 'value', parameters('issuerUrl')), createObject('name', 'API_ENDPOINT', 'value', parameters('apiEndpoint')), createObject('name', 'GROUP_NAME', 'value', parameters('groupName')), createObject('name', 'GROUP', 'value', parameters('groupId')), createObject('name', 'IDENTITY', 'value', parameters('identityId')), createObject('name', 'DST_REPO', 'value', parameters('dstRepoPrefix')), createObject('name', 'ACR_REGISTRY', 'value', reference(format('/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.ContainerRegistry/registries/{2}', subscription().subscriptionId, parameters('acrResourceGroupName'), parameters('acrName')), '2023-07-01').loginServer), createObject('name', 'IGNORE_REFERRERS', 'value', string(parameters('ignoreReferrers'))), createObject('name', 'VERIFY_SIGNATURES', 'value', string(parameters('verifySignatures'))), createObject('name', 'PORT', 'value', string(parameters('containerPort'))), createObject('name', 'OIDC_TOKEN', 'secretRef', 'chainguard-oidc-token')))]",
                       "resources": {
                         "cpu": "[json(parameters('containerCpu'))]",
