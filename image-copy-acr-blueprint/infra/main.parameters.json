@@ -1,0 +1,51 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "resourceGroupName": {
+      "value": "rg-image-copy-acr-dev"
+    },
+    "location": {
+      "value": "eastus"
+    },
+    "workloadName": {
+      "value": "image-copy-acr"
+    },
+    "containerImage": {
+      "value": "myregistry.azurecr.io/image-copy-acr:latest"
+    },
+    "acrName": {
+      "value": "myregistry"
+    },
+    "acrResourceGroupName": {
+      "value": "rg-shared-acr"
+    },
+    "dstRepoPrefix": {
+      "value": "myregistry.azurecr.io/mirrors"
+    },
+    "groupName": {
+      "value": "example-group"
+    },
+    "groupId": {
+      "value": "REPLACE_WITH_CHAINGUARD_GROUP_ID"
+    },
+    "identityId": {
+      "value": "REPLACE_WITH_CHAINGUARD_IDENTITY_ID"
+    },
+    "chainguardOidcToken": {
+      "value": "REPLACE_WITH_BOOTSTRAP_OIDC_TOKEN"
+    },
+    "ignoreReferrers": {
+      "value": true
+    },
+    "verifySignatures": {
+      "value": false
+    },
+    "tags": {
+      "value": {
+        "example": "image-copy-acr-blueprint",
+        "managed-by": "bicep"
+      }
+    }
+  }
+}

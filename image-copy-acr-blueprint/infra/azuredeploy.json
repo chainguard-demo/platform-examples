@@ -1,0 +1,433 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "resourceGroupName": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource group name for the image copy deployment."
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "eastus",
+      "metadata": {
+        "description": "Azure region for the deployment."
+      }
+    },
+    "workloadName": {
+      "type": "string",
+      "defaultValue": "image-copy-acr",
+      "metadata": {
+        "description": "Base name used to derive Azure resource names."
+      }
+    },
+    "containerImage": {
+      "type": "string",
+      "metadata": {
+        "description": "Container image for the service, including registry and tag."
+      }
+    },
+    "containerCpu": {
+      "type": "string",
+      "defaultValue": "0.25",
+      "metadata": {
+        "description": "CPU requested by the Container App, for example 0.25, 0.5, or 1.0."
+      }
+    },
+    "containerMemory": {
+      "type": "string",
+      "defaultValue": "0.5Gi",
+      "metadata": {
+        "description": "Memory requested by the Container App."
+      }
+    },
+    "containerPort": {
+      "type": "int",
+      "defaultValue": 8080,
+      "metadata": {
+        "description": "Port exposed by the service."
+      }
+    },
+    "acrName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the existing target Azure Container Registry."
+      }
+    },
+    "acrResourceGroupName": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource group that contains the target Azure Container Registry."
+      }
+    },
+    "dstRepoPrefix": {
+      "type": "string",
+      "metadata": {
+        "description": "Destination repository prefix in ACR, including registry host, for example myregistry.azurecr.io/mirrors."
+      }
+    },
+    "issuerUrl": {
+      "type": "string",
+      "defaultValue": "https://issuer.enforce.dev",
+      "metadata": {
+        "description": "Chainguard issuer URL."
+      }
+    },
+    "apiEndpoint": {
+      "type": "string",
+      "defaultValue": "https://console-api.enforce.dev",
+      "metadata": {
+        "description": "Chainguard API endpoint."
+      }
+    },
+    "groupName": {
+      "type": "string",
+      "metadata": {
+        "description": "Chainguard source group name."
+      }
+    },
+    "groupId": {
+      "type": "string",
+      "metadata": {
+        "description": "Chainguard source group ID."
+      }
+    },
+    "identityId": {
+      "type": "string",
+      "metadata": {
+        "description": "Chainguard identity ID used by the service."
+      }
+    },
+    "chainguardOidcToken": {
+      "type": "secureString",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Bootstrap OIDC token required by the current app code path for Chainguard token exchange."
+      }
+    },
+    "ignoreReferrers": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Skip referrer tags such as signatures and attestations."
+      }
+    },
+    "verifySignatures": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Verify signatures before copying an image."
+      }
+    },
+    "externalIngress": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Apply external ingress to the Container App."
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {},
+      "metadata": {
+        "description": "Tags applied to created Azure resources."
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/resourceGroups",
+      "apiVersion": "2024-03-01",
+      "name": "[parameters('resourceGroupName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]"
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2024-03-01",
+      "name": "[format('{0}-workload', parameters('workloadName'))]",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "workloadName": {
+            "value": "[parameters('workloadName')]"
+          },
+          "containerImage": {
+            "value": "[parameters('containerImage')]"
+          },
+          "containerCpu": {
+            "value": "[parameters('containerCpu')]"
+          },
+          "containerMemory": {
+            "value": "[parameters('containerMemory')]"
+          },
+          "containerPort": {
+            "value": "[parameters('containerPort')]"
+          },
+          "acrName": {
+            "value": "[parameters('acrName')]"
+          },
+          "acrResourceGroupName": {
+            "value": "[parameters('acrResourceGroupName')]"
+          },
+          "dstRepoPrefix": {
+            "value": "[parameters('dstRepoPrefix')]"
+          },
+          "issuerUrl": {
+            "value": "[parameters('issuerUrl')]"
+          },
+          "apiEndpoint": {
+            "value": "[parameters('apiEndpoint')]"
+          },
+          "groupName": {
+            "value": "[parameters('groupName')]"
+          },
+          "groupId": {
+            "value": "[parameters('groupId')]"
+          },
+          "identityId": {
+            "value": "[parameters('identityId')]"
+          },
+          "chainguardOidcToken": {
+            "value": "[parameters('chainguardOidcToken')]"
+          },
+          "ignoreReferrers": {
+            "value": "[parameters('ignoreReferrers')]"
+          },
+          "verifySignatures": {
+            "value": "[parameters('verifySignatures')]"
+          },
+          "externalIngress": {
+            "value": "[parameters('externalIngress')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "workloadName": {
+              "type": "string"
+            },
+            "containerImage": {
+              "type": "string"
+            },
+            "containerCpu": {
+              "type": "string"
+            },
+            "containerMemory": {
+              "type": "string"
+            },
+            "containerPort": {
+              "type": "int"
+            },
+            "acrName": {
+              "type": "string"
+            },
+            "acrResourceGroupName": {
+              "type": "string"
+            },
+            "dstRepoPrefix": {
+              "type": "string"
+            },
+            "issuerUrl": {
+              "type": "string"
+            },
+            "apiEndpoint": {
+              "type": "string"
+            },
+            "groupName": {
+              "type": "string"
+            },
+            "groupId": {
+              "type": "string"
+            },
+            "identityId": {
+              "type": "string"
+            },
+            "chainguardOidcToken": {
+              "type": "secureString"
+            },
+            "ignoreReferrers": {
+              "type": "bool"
+            },
+            "verifySignatures": {
+              "type": "bool"
+            },
+            "externalIngress": {
+              "type": "bool"
+            },
+            "tags": {
+              "type": "object"
+            }
+          },
+          "variables": {
+            "containerAppName": "[format('{0}-app', parameters('workloadName'))]",
+            "managedEnvironmentName": "[format('{0}-env', parameters('workloadName'))]",
+            "workspaceName": "[format('{0}-logs', parameters('workloadName'))]",
+            "acrPullRoleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')]",
+            "acrPushRoleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '8311e382-0749-4cb8-b61a-304f252e45ec')]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.OperationalInsights/workspaces",
+              "apiVersion": "2023-09-01",
+              "name": "[variables('workspaceName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "retentionInDays": 30,
+                "sku": {
+                  "name": "PerGB2018"
+                },
+                "features": {
+                  "enableLogAccessUsingOnlyResourcePermissions": true
+                }
+              }
+            },
+            {
+              "type": "Microsoft.App/managedEnvironments",
+              "apiVersion": "2024-03-01",
+              "name": "[variables('managedEnvironmentName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces', variables('workspaceName'))]"
+              ],
+              "properties": {
+                "appLogsConfiguration": {
+                  "destination": "log-analytics",
+                  "logAnalyticsConfiguration": {
+                    "customerId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', variables('workspaceName')), '2023-09-01').customerId]",
+                    "sharedKey": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', variables('workspaceName')), '2023-09-01').primarySharedKey]"
+                  }
+                }
+              }
+            },
+            {
+              "type": "Microsoft.App/containerApps",
+              "apiVersion": "2024-03-01",
+              "name": "[variables('containerAppName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.App/managedEnvironments', variables('managedEnvironmentName'))]"
+              ],
+              "properties": {
+                "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', variables('managedEnvironmentName'))]",
+                "configuration": {
+                  "activeRevisionsMode": "Single",
+                  "ingress": {
+                    "external": "[parameters('externalIngress')]",
+                    "targetPort": "[parameters('containerPort')]",
+                    "transport": "auto"
+                  },
+                  "registries": [
+                    {
+                      "server": "[reference(format('/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.ContainerRegistry/registries/{2}', subscription().subscriptionId, parameters('acrResourceGroupName'), parameters('acrName')), '2023-07-01').loginServer]",
+                      "identity": "system"
+                    }
+                  ],
+                  "secrets": "[if(empty(parameters('chainguardOidcToken')), createArray(), createArray(createObject('name', 'chainguard-oidc-token', 'value', parameters('chainguardOidcToken'))))]"
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "name": "image-copy-acr",
+                      "image": "[parameters('containerImage')]",
+                      "env": "[if(empty(parameters('chainguardOidcToken')), createArray(createObject('name', 'ISSUER_URL', 'value', parameters('issuerUrl')), createObject('name', 'API_ENDPOINT', 'value', parameters('apiEndpoint')), createObject('name', 'GROUP_NAME', 'value', parameters('groupName')), createObject('name', 'GROUP', 'value', parameters('groupId')), createObject('name', 'IDENTITY', 'value', parameters('identityId')), createObject('name', 'DST_REPO', 'value', parameters('dstRepoPrefix')), createObject('name', 'ACR_REGISTRY', 'value', reference(format('/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.ContainerRegistry/registries/{2}', subscription().subscriptionId, parameters('acrResourceGroupName'), parameters('acrName')), '2023-07-01').loginServer), createObject('name', 'IGNORE_REFERRERS', 'value', string(parameters('ignoreReferrers'))), createObject('name', 'VERIFY_SIGNATURES', 'value', string(parameters('verifySignatures'))), createObject('name', 'PORT', 'value', string(parameters('containerPort')))), createArray(createObject('name', 'ISSUER_URL', 'value', parameters('issuerUrl')), createObject('name', 'API_ENDPOINT', 'value', parameters('apiEndpoint')), createObject('name', 'GROUP_NAME', 'value', parameters('groupName')), createObject('name', 'GROUP', 'value', parameters('groupId')), createObject('name', 'IDENTITY', 'value', parameters('identityId')), createObject('name', 'DST_REPO', 'value', parameters('dstRepoPrefix')), createObject('name', 'ACR_REGISTRY', 'value', reference(format('/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.ContainerRegistry/registries/{2}', subscription().subscriptionId, parameters('acrResourceGroupName'), parameters('acrName')), '2023-07-01').loginServer), createObject('name', 'IGNORE_REFERRERS', 'value', string(parameters('ignoreReferrers'))), createObject('name', 'VERIFY_SIGNATURES', 'value', string(parameters('verifySignatures'))), createObject('name', 'PORT', 'value', string(parameters('containerPort'))), createObject('name', 'OIDC_TOKEN', 'secretRef', 'chainguard-oidc-token')))]",
+                      "resources": {
+                        "cpu": "[json(parameters('containerCpu'))]",
+                        "memory": "[parameters('containerMemory')]"
+                      }
+                    }
+                  ],
+                  "scale": {
+                    "minReplicas": 1,
+                    "maxReplicas": 1
+                  }
+                }
+              }
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "name": "[guid(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('acrResourceGroupName')), 'Microsoft.ContainerRegistry/registries', parameters('acrName')), variables('containerAppName'), 'AcrPull')]",
+              "scope": "[format('/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.ContainerRegistry/registries/{2}', subscription().subscriptionId, parameters('acrResourceGroupName'), parameters('acrName'))]",
+              "dependsOn": [
+                "[resourceId('Microsoft.App/containerApps', variables('containerAppName'))]"
+              ],
+              "properties": {
+                "roleDefinitionId": "[variables('acrPullRoleDefinitionId')]",
+                "principalId": "[reference(resourceId('Microsoft.App/containerApps', variables('containerAppName')), '2024-03-01', 'Full').identity.principalId]",
+                "principalType": "ServicePrincipal"
+              }
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "name": "[guid(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('acrResourceGroupName')), 'Microsoft.ContainerRegistry/registries', parameters('acrName')), variables('containerAppName'), 'AcrPush')]",
+              "scope": "[format('/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.ContainerRegistry/registries/{2}', subscription().subscriptionId, parameters('acrResourceGroupName'), parameters('acrName'))]",
+              "dependsOn": [
+                "[resourceId('Microsoft.App/containerApps', variables('containerAppName'))]"
+              ],
+              "properties": {
+                "roleDefinitionId": "[variables('acrPushRoleDefinitionId')]",
+                "principalId": "[reference(resourceId('Microsoft.App/containerApps', variables('containerAppName')), '2024-03-01', 'Full').identity.principalId]",
+                "principalType": "ServicePrincipal"
+              }
+            }
+          ],
+          "outputs": {
+            "containerAppName": {
+              "type": "string",
+              "value": "[variables('containerAppName')]"
+            },
+            "serviceUrl": {
+              "type": "string",
+              "value": "[if(parameters('externalIngress'), format('https://{0}', reference(resourceId('Microsoft.App/containerApps', variables('containerAppName')), '2024-03-01').properties.configuration.ingress.fqdn), '')]"
+            },
+            "managedIdentityPrincipalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.App/containerApps', variables('containerAppName')), '2024-03-01', 'Full').identity.principalId]"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "resourceGroup": {
+      "type": "string",
+      "value": "[parameters('resourceGroupName')]"
+    },
+    "containerAppName": {
+      "type": "string",
+      "value": "[reference(format('{0}-workload', parameters('workloadName')), '2024-03-01').outputs.containerAppName.value]"
+    },
+    "serviceUrl": {
+      "type": "string",
+      "value": "[reference(format('{0}-workload', parameters('workloadName')), '2024-03-01').outputs.serviceUrl.value]"
+    },
+    "managedIdentityPrincipalId": {
+      "type": "string",
+      "value": "[reference(format('{0}-workload', parameters('workloadName')), '2024-03-01').outputs.managedIdentityPrincipalId.value]"
+    }
+  }
+}
