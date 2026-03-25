@@ -79,7 +79,7 @@ az deployment sub create \
 - `containerImage`: removed. The image must be built into the target ACR before deployment using `az acr build` (the deployment uses the fixed image name `cgr-image-copy:v1` in the target registry). This makes the deployment deterministic and avoids runtime bootstrap pull races.
 - `acrName`, `acrResourceGroupName`: the existing target registry.
 - `dstRepoPrefix`: destination prefix in ACR; may include the registry host or just the repository path.
-- `groupName`, `groupId`, `identityId`: Chainguard source group and identity data.
+- `chainguardOrgName`, `identityId`: Chainguard organization name and identity ID used by the service.
 - `chainguardOidcToken`: bootstrap secret input for the current app code path (optional). The blueprint also creates an Azure Key Vault with a discoverable static name where operators can store this secret instead.
 - `containerCpu`: defaults to `0.25` so the starter shape matches a minimal Container Apps deployment.
 

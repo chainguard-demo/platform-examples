@@ -20,11 +20,8 @@
     "dstRepoPrefix": {
       "value": ""
     },
-    "groupName": {
+    "chainguardOrgName": {
       "value": "example-group"
-    },
-    "groupId": {
-      "value": "REPLACE_WITH_CHAINGUARD_GROUP_ID"
     },
     "identityId": {
       "value": "REPLACE_WITH_CHAINGUARD_IDENTITY_ID"

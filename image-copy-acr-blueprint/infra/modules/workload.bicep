@@ -40,11 +40,8 @@ param issuerUrl string
 @description('Chainguard API endpoint.')
 param apiEndpoint string
 
-@description('Chainguard source group name.')
-param groupName string
-
-@description('Chainguard source group ID.')
-param groupId string
+@description('Chainguard organization name (used as GROUP_NAME in the app).')
+param chainguardOrgName string
 
 @description('Chainguard identity ID used by the service.')
 param identityId string
@@ -88,11 +85,7 @@ var envVars = concat([
   }
   {
     name: 'GROUP_NAME'
-    value: groupName
-  }
-  {
-    name: 'GROUP'
-    value: groupId
+    value: chainguardOrgName
   }
   {
     name: 'IDENTITY'

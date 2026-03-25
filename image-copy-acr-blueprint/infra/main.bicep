@@ -47,11 +47,8 @@ param issuerUrl string = 'https://issuer.enforce.dev'
 @description('Chainguard API endpoint.')
 param apiEndpoint string = 'https://console-api.enforce.dev'
 
-@description('Chainguard source group name.')
-param groupName string
-
-@description('Chainguard source group ID.')
-param groupId string
+@description('Chainguard organization name (used as GROUP_NAME in the app).')
+param chainguardOrgName string
 
 @description('Chainguard identity ID used by the service.')
 param identityId string
@@ -94,8 +91,7 @@ module workload './modules/workload.bicep' = {
     utcValue: utcValue
     issuerUrl: issuerUrl
     apiEndpoint: apiEndpoint
-    groupName: groupName
-    groupId: groupId
+    chainguardOrgName: chainguardOrgName
     identityId: identityId
     chainguardOidcToken: chainguardOidcToken
     ignoreReferrers: ignoreReferrers
