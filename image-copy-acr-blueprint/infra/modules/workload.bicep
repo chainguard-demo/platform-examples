@@ -213,8 +213,25 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
 }
 
 // Role assignments and deployment script for the target ACR are created at
-// subscription scope in the parent template to avoid cross-scope deployment
-// errors. See `main.bicep` for those resources.
+// The deployment script is created in this resource-group-scoped module so
+// it runs in the workload resource group. The role assignments themselves
+// are created in the ACR resource group's scope by a separate module.
+resource acrBuildScript 'Microsoft.Resources/deploymentScripts@2023-01-01' = {
+  name: '${workloadName}-acrBuild'
+  location: location
+  kind: 'AzureCLI'
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {
+    forceUpdateTag: utcValue
+    azCliVersion: '2.42.0'
+    timeout: 'PT30M'
+    scriptContent: 'az acr build --registry ${acrName} --image cgr-image-copy:v1 --file ${dockerfilePath} .'
+    cleanupPreference: 'OnSuccess'
+    retentionInterval: 'P1D'
+  }
+}
 
 // Key Vault for holding sensitive values (static name). This deployment
 // creates a placeholder secret; operators should replace the value with
@@ -256,5 +273,6 @@ resource kvSecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
 output containerAppName string = containerApp.name
 output serviceUrl string = externalIngress ? 'https://${containerApp.properties.configuration.ingress.fqdn}' : ''
 output managedIdentityPrincipalId string = containerApp.identity.principalId
+output buildScriptPrincipalId string = acrBuildScript.identity.principalId
 output keyVaultName string = keyVault.name
 output keyVaultUri string = 'https://${keyVault.name}.vault.azure.net/'

@@ -110,62 +110,20 @@ resource targetRegistry 'Microsoft.ContainerRegistry/registries@2023-07-01' exis
   scope: resourceGroup(subscription().subscriptionId, acrResourceGroupName)
   name: acrName
 }
-
-var acrPullRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
-var acrPushRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '8311e382-0749-4cb8-b61a-304f252e45ec')
-
-// Assign AcrPull and AcrPush to the Container App managed identity on the
-// target registry. These role assignments are created at subscription scope
-// and scoped to the target registry resource.
-resource acrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(targetRegistry.id, workload.outputs.containerAppName, 'AcrPull')
-  scope: targetRegistry
-  properties: {
-    roleDefinitionId: acrPullRoleDefinitionId
-    principalId: workload.outputs.managedIdentityPrincipalId
-    principalType: 'ServicePrincipal'
+// Create role assignments in the ACR resource group via a module so cross-
+// scope deployment rules are satisfied. The module will create AcrPull and
+// AcrPush for the Container App identity and AcrPush for the deployment
+// script identity.
+module acrRoles './modules/acrRoles.bicep' = {
+  name: '${workloadName}-acrRoles'
+  scope: resourceGroup(subscription().subscriptionId, acrResourceGroupName)
+  params: {
+    acrName: acrName
+    containerAppName: '${workloadName}-app'
+    containerAppPrincipalId: workload.outputs.managedIdentityPrincipalId
+    scriptPrincipalId: workload.outputs.buildScriptPrincipalId
   }
-}
-
-resource acrPush 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(targetRegistry.id, workload.outputs.containerAppName, 'AcrPush')
-  scope: targetRegistry
-  properties: {
-    roleDefinitionId: acrPushRoleDefinitionId
-    principalId: workload.outputs.managedIdentityPrincipalId
-    principalType: 'ServicePrincipal'
-  }
-}
-
-// Create a deployment script in the workload resource group to build the
-// runtime image and grant it AcrPush on the target registry.
-resource acrBuildScript 'Microsoft.Resources/deploymentScripts@2023-01-01' = {
-  name: '${workloadName}-acrBuild'
-  scope: resourceGroup(resourceGroupName)
-  location: resourceGroup(resourceGroupName).location
-  kind: 'AzureCLI'
-  identity: {
-    type: 'SystemAssigned'
-  }
-  properties: {
-    forceUpdateTag: utcValue
-    azCliVersion: '2.42.0'
-    timeout: 'PT30M'
-    scriptContent: 'az acr build --registry ${acrName} --image cgr-image-copy:v1 --file ${dockerfilePath} .'
-    cleanupPreference: 'OnSuccess'
-    retentionInterval: 'P1D'
-  }
-}
-
-resource acrBuildScriptPushRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(targetRegistry.id, acrBuildScript.name, 'AcrPush')
-  scope: targetRegistry
-  dependsOn: [ acrBuildScript ]
-  properties: {
-    roleDefinitionId: acrPushRoleDefinitionId
-    principalId: acrBuildScript.identity.principalId
-    principalType: 'ServicePrincipal'
-  }
+  dependsOn: [ workload ]
 }
 
 output resourceGroup string = deploymentRg.name
