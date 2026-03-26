@@ -1,0 +1,4 @@
+PyJWT[cryptography]
+cryptography
+awslambdaric
+boto3
