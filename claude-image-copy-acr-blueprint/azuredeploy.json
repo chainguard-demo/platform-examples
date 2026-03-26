@@ -241,7 +241,7 @@
       "dependsOn": [
         "[resourceId('Microsoft.ContainerRegistry/registries/tasks', parameters('containerRegistryName'), variables('acrTaskName'))]",
         "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('scriptIdentityName'))]",
-        "[resourceId('Microsoft.Authorization/roleAssignments', variables('roleAssignmentScriptContribName'))]"
+        "[resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName'))]"
       ],
       "identity": {
         "type": "UserAssigned",
@@ -271,8 +271,7 @@
         "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('appIdentityName'))]",
         "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), variables('chainguardSecretName'))]",
         "[resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName'))]",
-        "[resourceId('Microsoft.Authorization/roleAssignments', variables('roleAssignmentAcrPullName'))]",
-        "[resourceId('Microsoft.Authorization/roleAssignments', variables('roleAssignmentKvSecretName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
         "[resourceId('Microsoft.Resources/deploymentScripts', variables('deploymentScriptName'))]"
       ],
       "identity": {

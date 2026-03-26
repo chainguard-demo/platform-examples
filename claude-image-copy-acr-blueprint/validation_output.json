@@ -1,0 +1,1 @@
+ERROR: {"code": "InvalidTemplate", "message": "Deployment template validation failed: 'The resource 'Microsoft.Authorization/roleAssignments/730371b0-04d1-50c5-9b1f-832ccaa1b825' is not defined in the template. Please see https://aka.ms/arm-syntax for usage details.'.", "additionalInfo": [{"type": "TemplateViolation", "info": {"lineNumber": 0, "linePosition": 0, "path": ""}}]}
