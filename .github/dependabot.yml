@@ -2,13 +2,8 @@
 version: 2
 updates:
   - package-ecosystem: gomod
-    directory: "./slack-webhook"
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 10
-
-  - package-ecosystem: gomod
-    directory: "./github-issue-opener"
+    directories:
+    - "./*"
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
