@@ -171,9 +171,7 @@
       "apiVersion": "2023-05-01",
       "name": "[parameters('containerAppEnvironmentName')]",
       "location": "[parameters('location')]",
-      "properties": {
-        "publicNetworkAccess": "Disabled"
-      }
+      "properties": {}
     },
     {
       "type": "Microsoft.Authorization/roleAssignments",
