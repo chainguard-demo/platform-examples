@@ -83,19 +83,40 @@ resource "aws_ecr_repository" "copier-repo" {
   }
 }
 
-resource "ko_build" "image" {
-  repo        = aws_ecr_repository.copier-repo.repository_url
-  importpath  = "github.com/chainguard-dev/platform-examples/image-copy-ecr"
-  working_dir = path.module
-  // Disable SBOM generation due to
-  // https://github.com/ko-build/ko/issues/878
-  sbom = "none"
-}
-
 locals {
+  lambda_image_uri = "${aws_ecr_repository.copier_repo.repository_url}:${random_string.tag.result}"
+  // the sha1 hash value is used to detect changes to the source code so that
+  // the provider knows when to rebuild the lambda image with a new tag
+  source_hash      = sha1(join("", [for f in fileset("${path.module}/..", "*") : filesha1("${path.module}/../${f}")]))
   // Using a local for the lambda breaks a cyclic dependency between
   // chainguard_identity.aws and aws_lambda_function.lambda
   lambda_name = "image-copy"
+}
+
+resource "random_string" "tag" {
+  keepers = {
+    dir_sha1 = local.source_hash
+  }
+  length  = 4
+  special = false
+  upper   = false
+}
+
+resource "docker_registry_image" "cgr_ecr_mirror" {
+  name          = docker_image.image.name
+  keep_remotely = true
+}
+
+resource "docker_image" "image" {
+  name = local.lambda_image_uri
+  build {
+    context  = "${path.module}/.."
+    tag      = ["latest", random_string.tag.result]
+    platform = "linux/amd64"
+  }
+  triggers = {
+    dir_sha1 = local.source_hash
+  }
 }
 
 data "aws_region" "current" {}
@@ -105,7 +126,8 @@ resource "aws_lambda_function" "lambda" {
   role          = aws_iam_role.lambda.arn
 
   package_type = "Image"
-  image_uri    = ko_build.image.image_ref
+  image_uri    = local.lambda_image_uri
+  depends_on   = [docker_registry_image.cgr_ecr_mirror]
 
   timeout = 300
 
