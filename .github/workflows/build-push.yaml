@@ -39,7 +39,7 @@ jobs:
         with:
           go-version-file: ${{ matrix.image }}/go.mod
 
-      - uses: sigstore/cosign-installer@4959ce089c160fddf62f7b42464195ba1a56d382 # v3.0.2
+      - uses: sigstore/cosign-installer@cad07c2e89fa2edd6e2d7bab4c1aa38e53f76003 # v3.0.2
       - uses: ko-build/setup-ko@3aebd0597dc1e9d1a26bcfdb7cbeb19c131d3037 # v0.7
 
       - env:
