@@ -190,7 +190,7 @@
       ],
       "properties": {
         "roleDefinitionId": "[variables('acrPullRoleId')]",
-        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('appIdentityName'))).principalId]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('appIdentityName')), '2023-01-31').principalId]",
         "principalType": "ServicePrincipal"
       }
     },
@@ -204,7 +204,7 @@
       ],
       "properties": {
         "roleDefinitionId": "[variables('acrPushRoleId')]",
-        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('appIdentityName'))).principalId]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('appIdentityName')), '2023-01-31').principalId]",
         "principalType": "ServicePrincipal"
       }
     },
@@ -219,7 +219,7 @@
       ],
       "properties": {
         "roleDefinitionId": "[variables('kvSecretsUserRoleId')]",
-        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('appIdentityName'))).principalId]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('appIdentityName')), '2023-01-31').principalId]",
         "principalType": "ServicePrincipal"
       }
     },
@@ -233,7 +233,7 @@
       ],
       "properties": {
         "roleDefinitionId": "[variables('contributorRoleId')]",
-        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('scriptIdentityName'))).principalId]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('scriptIdentityName')), '2023-01-31').principalId]",
         "principalType": "ServicePrincipal"
       }
     },
@@ -331,7 +331,7 @@
           "secrets": [
             {
               "name": "chainguard-oidc-token",
-              "keyVaultUrl": "[reference(resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), variables('chainguardSecretName'))).secretUri]",
+              "keyVaultUrl": "[reference(resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), variables('chainguardSecretName')), '2023-07-01').secretUri]",
               "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('appIdentityName'))]"
             }
           ],
@@ -415,7 +415,7 @@
   "outputs": {
     "containerRegistryLoginServer": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName'))).loginServer]"
+      "value": "[reference(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName')), '2023-07-01').loginServer]"
     },
     "keyVaultName": {
       "type": "string",
@@ -423,15 +423,15 @@
     },
     "keyVaultUri": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))).vaultUri]"
+      "value": "[reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri]"
     },
     "containerAppFqdn": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.App/containerApps', parameters('containerAppName'))).configuration.ingress.fqdn]"
+      "value": "[reference(resourceId('Microsoft.App/containerApps', parameters('containerAppName')), '2023-05-01').configuration.ingress.fqdn]"
     },
     "acrTaskRunId": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deploymentScripts', variables('deploymentScriptName'))).outputs.runId]"
+      "value": "[reference(resourceId('Microsoft.Resources/deploymentScripts', variables('deploymentScriptName')), '2023-08-01').outputs.runId]"
     },
     "updateSecretCommand": {
       "type": "string",
