@@ -1,0 +1,24 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "containerRegistryName": {
+      "value": "myuniquecgrregistry"
+    },
+    "gitRepoUrl": {
+      "value": "https://github.com/justinprince/platform-examples"
+    },
+    "gitRepoBranch": {
+      "value": "main"
+    },
+    "dockerfilePath": {
+      "value": "Dockerfile"
+    },
+    "gitRepoContextPath": {
+      "value": "claude-image-copy-acr-blueprint"
+    },
+    "chainguardOidcToken": {
+      "value": "REPLACE_WITH_CHAINCTL_OIDC_TOKEN"
+    }
+  }
+}
