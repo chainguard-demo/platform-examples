@@ -1,9 +1,5 @@
 # Chainguard Image Copy — Azure Bicep Deployment
 
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fjustinprince%2Fplatform-examples%2Fmain%2Fclaude-image-copy-acr-blueprint%2Fmain.bicep)
-
-[![Deploy to Azure Government](https://aka.ms/deploytoazuregovbutton)](https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fjustinprince%2Fplatform-examples%2Fmain%2Fclaude-image-copy-acr-blueprint%2Fmain.bicep)
-
 Deploys Azure infrastructure to build and run `cgr-image-copy:v1` from this repo, with the Chainguard OIDC token supplied by the user at deployment time, stored in Azure Key Vault, and injected into the app as `OIDC_TOKEN`. The ACR image build is **triggered automatically** during deployment.
 
 ---
