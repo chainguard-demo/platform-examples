@@ -5,6 +5,9 @@
     "containerRegistryName": {
       "value": "myuniquecgrregistry"
     },
+    "acrResourceGroupName": {
+      "value": ""
+    },
     "gitRepoUrl": {
       "value": "https://github.com/justinprince/platform-examples"
     },
