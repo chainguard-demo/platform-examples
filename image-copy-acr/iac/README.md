@@ -2,19 +2,21 @@
 
 Terraform module that deploys the `image-copy-acr` service to Azure Container Apps. The service subscribes to Chainguard registry push events and automatically copies new images into an Azure Container Registry (ACR).
 
+If you supply `existing_acr_name` (and `existing_acr_resource_group`), Terraform will reuse that registry — no new ACR is created. Leave both variables unset and Terraform creates a fresh Basic-tier ACR in the generated resource group. Either way, the rest of the deployment (Container App, managed identity, Chainguard identity and subscription) is identical.
+
 ## How it works
 
 ```
 Chainguard Registry
        │  image pushed
        ▼
-Chainguard Subscription ──► Container App (ca-cgr-replicator)
+Chainguard Subscription ──► Container App (ca-cgr-replicator)  [HTTPS]
                                     │  copies image
                                     ▼
                              Azure Container Registry
 ```
 
-1. Chainguard sends a CloudEvent (HTTP POST) to the Container App whenever an image is pushed to any repository in your group.
+1. Chainguard sends a CloudEvent (HTTPS POST) to the Container App's public HTTPS endpoint whenever an image is pushed to any repository in your group.
 2. The app authenticates to `cgr.dev` using a Chainguard token exchanged via Azure AD workload identity.
 3. The app copies the image to the target ACR using its managed identity for authentication.
 
@@ -51,8 +53,7 @@ Chainguard Subscription ──► Container App (ca-cgr-replicator)
 - [Terraform](https://developer.hashicorp.com/terraform/install) >= 1.3
 - [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) — authenticated with `az login`
 - [Chainguard CLI (`chainctl`)](https://edu.chainguard.dev/chainguard/chainguard-enforce/how-to-install-chainctl/) — authenticated with `chainctl auth login`
-- [Go](https://go.dev/dl/) >= 1.21 — required by the KO provider to compile the container image
-- [KO](https://ko.build/install/) — installed and on `$PATH`
+- [Docker](https://docs.docker.com/get-docker/) — Terraform builds and pushes the container image via `docker` during `apply`
 
 ### Azure permissions
 
@@ -97,7 +98,7 @@ existing_acr_resource_group = "my-platform-rg"
 
 ### 3. Authenticate Docker to the ACR
 
-The KO provider pushes the built container image directly to the ACR during `terraform apply`. Docker must be authenticated first.
+Terraform builds and pushes the container image using Docker during `terraform apply`. The `docker` CLI must be authenticated to the ACR before running `terraform apply`.
 
 **New ACR (Terraform will create it):** Run this _after_ step 4's `init`, but you will need to do a targeted apply first:
 
