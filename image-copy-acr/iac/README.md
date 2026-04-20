@@ -86,7 +86,7 @@ cp terraform.tfvars.example terraform.tfvars
 Edit `terraform.tfvars` and set at minimum:
 
 ```hcl
-group_name = "your.org.com"   # your Chainguard group name
+chainguard_org = "your.org.com"   # your Chainguard group name
 ```
 
 To use an existing ACR instead of creating a new one, also set:
@@ -144,7 +144,7 @@ az containerapp logs show \
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `group_name` | yes | — | Chainguard group name (e.g. `your.org.com`) |
+| `chainguard_org` | yes | — | Chainguard group name (e.g. `your.org.com`) |
 | `location` | no | `eastus` | Azure region |
 | `dst_repo_prefix` | no | `mirrors` | Path prefix in the ACR for copied images |
 | `ignore_referrers` | no | `false` | Skip copying signature/attestation tags |

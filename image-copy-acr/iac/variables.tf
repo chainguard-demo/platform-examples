@@ -6,8 +6,8 @@ variable "location" {
 
 # ── Chainguard ───────────────────────────────────────────────────────────────
 
-variable "group_name" {
-  description = "Chainguard group name to subscribe to (e.g. 'your.org.com')."
+variable "chainguard_org" {
+  description = "Chainguard organization name to subscribe to (e.g. 'your.org.com')."
   type        = string
 }
 

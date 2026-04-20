@@ -1,5 +1,5 @@
 location   = "eastus"
-group_name = "your.org.com"
+chainguard_org = "your.org.com"
 
 dst_repo_prefix   = "mirrors"
 ignore_referrers  = false

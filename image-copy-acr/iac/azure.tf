@@ -159,7 +159,7 @@ resource "azurerm_container_app" "replicator" {
       }
       env {
         name  = "GROUP_NAME"
-        value = var.group_name
+        value = var.chainguard_org
       }
       env {
         name  = "GROUP"

@@ -1,6 +1,6 @@
 # Look up the Chainguard group by name.
 data "chainguard_group" "group" {
-  name = var.group_name
+  name = var.chainguard_org
 }
 
 # Create a Chainguard identity that trusts the Azure AD token issued to the
