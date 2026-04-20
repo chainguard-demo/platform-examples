@@ -83,7 +83,7 @@ chainctl auth login
 cp iac/terraform.tfvars.example iac/terraform.tfvars
 ```
 
-Edit `terraform.tfvars`:
+Edit `iac/terraform.tfvars`:
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
@@ -99,7 +99,7 @@ Edit `terraform.tfvars`:
 
 Terraform builds and pushes the container image using Docker during `terraform apply`. The `docker` CLI must be authenticated to the ACR before running `terraform apply`.
 
-**New ACR (Terraform will create it):** Run this _after_ step 4's `init`, but you will need to do a targeted apply first:
+**New ACR (Terraform will create it):** Run this _after_ step 4's `init`, it's a targeted apply that will create the ACR registry which you will then log into using the `az acr login` command:
 
 ```sh
 cd iac

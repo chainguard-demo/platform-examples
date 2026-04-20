@@ -3,9 +3,19 @@ output "resource_group" {
   description = "Generated resource group name."
 }
 
+output "new_acr_name" {
+  value       = one(azurerm_container_registry.new[*].name)
+  description = "Name of the newly created ACR. Use with 'az acr login --name' after the targeted apply. Null when reusing an existing ACR."
+}
+
 output "acr_login_server" {
   value       = local.acr_login_server
   description = "ACR login server hostname (e.g. myregistry.azurecr.io)."
+}
+
+output "acr_id" {
+  value       = local.acr_id
+  description = "Full Azure resource ID of the ACR."
 }
 
 output "dst_repo" {
