@@ -1,15 +1,19 @@
-# image-copy-acr — Infrastructure
+# image-copy-acr
 
 Terraform module that deploys the `image-copy-acr` service to Azure Container Apps. The service subscribes to Chainguard registry push events and automatically copies new images into an Azure Container Registry (ACR).
 
-If you supply `existing_acr_name` (and `existing_acr_resource_group`), Terraform will reuse that registry — no new ACR is created. Leave both variables unset and Terraform creates a fresh Basic-tier ACR in the generated resource group. Either way, the rest of the deployment (Container App, managed identity, Chainguard identity and subscription) is identical.
+> This is an image mirroring service, not a pull-through caching service.
+> This service will mirror all images in your Chainguard registry to your Azure Container Registry; it is not currently configured for targeted image replication.
+
+If you supply `existing_acr_name` (and `existing_acr_resource_group`), Terraform will reuse that registry instead of creating a new ACR instance. If you want to create a new ACR instance, leave both variables unset and Terraform creates a fresh Basic-tier ACR in the generated resource group. The rest of the deployment (Container App, managed identity, Chainguard identity and subscription) is identical.
 
 ## How it works
 
 ```
 Chainguard Registry
        │  image pushed
-       ▼
+       │
+       ▼               event
 Chainguard Subscription ──► Container App (ca-cgr-replicator)  [HTTPS]
                                     │  copies image
                                     ▼
@@ -77,7 +81,7 @@ az login
 chainctl auth login
 ```
 
-### 2. Copy and edit the variables file
+### 2. Copy and edit tfvars
 
 ```sh
 cp iac/terraform.tfvars.example iac/terraform.tfvars
@@ -97,14 +101,15 @@ Edit `iac/terraform.tfvars`:
 
 ### 3. Authenticate Docker to the ACR
 
-Terraform builds and pushes the container image using Docker during `terraform apply`. The `docker` CLI must be authenticated to the ACR before running `terraform apply`.
+Terraform builds and pushes the container image using Docker during `tf apply`. The `docker` CLI must be authenticated to the ACR before running `tf apply`.
 
-**New ACR (Terraform will create it):** Run this _after_ step 4's `init`, it's a targeted apply that will create the ACR registry which you will then log into using the `az acr login` command:
+**New ACR (Terraform will create it):** Targeted apply that will create the ACR registry which you will then log into using the `az acr login` command:
 
 ```sh
 cd iac
-terraform apply -target=azurerm_container_registry.new
-az acr login --name $(terraform output -raw acr_login_server | cut -d. -f1)
+tf init
+tf apply -target=azurerm_container_registry.new
+az acr login --name $(tf output -raw new_acr_name)
 ```
 
 **Existing ACR:**
@@ -117,8 +122,8 @@ az acr login --name <existing_acr_name>
 
 ```sh
 cd iac
-terraform init
-terraform apply
+tf init
+tf apply
 ```
 
 Review the plan and confirm. On the first run this takes a few minutes — Docker builds the image and pushes it before the Container App is created.
@@ -126,8 +131,8 @@ Review the plan and confirm. On the first run this takes a few minutes — Docke
 ### 5. Verify
 
 ```sh
-terraform output webhook_url   # Chainguard subscription sink
-terraform output dst_repo      # Where images are copied to
+tf output webhook_url   # Chainguard subscription sink
+tf output dst_repo      # Where images are copied to
 ```
 
 You can also check the Container App logs in the Azure Portal or via:
@@ -170,7 +175,7 @@ az containerapp logs show \
 
 ```sh
 cd iac
-terraform destroy
+tf destroy
 ```
 
 This removes all resources created by this module, including the Chainguard subscription, identity, and role binding.
