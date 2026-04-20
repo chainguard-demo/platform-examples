@@ -83,18 +83,17 @@ chainctl auth login
 cp iac/terraform.tfvars.example iac/terraform.tfvars
 ```
 
-Edit `terraform.tfvars` and set at minimum:
+Edit `terraform.tfvars`:
 
-```hcl
-chainguard_org = "your.org.com"   # your Chainguard organization name
-```
-
-To use an existing ACR instead of creating a new one, also set:
-
-```hcl
-existing_acr_name           = "myregistry"
-existing_acr_resource_group = "my-platform-rg"
-```
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `chainguard_org` | yes | — | Chainguard organization name (e.g. `your.org.com`) |
+| `location` | yes | `eastus` | Azure region |
+| `dst_repo_prefix` | yes | `mirrors` | Path prefix in the ACR for copied images |
+| `ignore_referrers` | no | `false` | Skip copying signature/attestation tags |
+| `verify_signatures` | no | `false` | Verify Chainguard signatures before copying |
+| `existing_acr_name` | no | `""` | Name of an existing ACR to use; leave blank to create one |
+| `existing_acr_resource_group` | no | `""` | Resource group of the existing ACR; required when `existing_acr_name` is set |
 
 ### 3. Authenticate Docker to the ACR
 
