@@ -42,6 +42,7 @@ type envConfig struct {
 	Identity         string `envconfig:"IDENTITY" required:"true"`
 	Port             int    `envconfig:"PORT" default:"8080" required:"true"`
 	DstRepo          string `envconfig:"DST_REPO" required:"true"`
+	TokenScope       string `envconfig:"TOKEN_SCOPE" required:"true"`
 	IgnoreReferrers  bool   `envconfig:"IGNORE_REFERRERS" required:"true"`
 	VerifySignatures bool   `envconfig:"VERIFY_SIGNATURES" required:"true"`
 }
@@ -215,7 +216,7 @@ func resolveRepositoryName(ctx context.Context, repoID string) (string, error) {
 func newToken(ctx context.Context, audience string) (*sts.TokenPair, error) {
 	exch := sts.New(env.Issuer, audience, sts.WithIdentity(env.Identity))
 	tok, err := azureCredential.GetToken(ctx, policy.TokenRequestOptions{
-		Scopes: []string{"api://AzureADTokenExchange"},
+		Scopes: []string{env.TokenScope},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("getting Azure token: %w", err)

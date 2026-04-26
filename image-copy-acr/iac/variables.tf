@@ -11,6 +11,42 @@ variable "chainguard_org" {
   type        = string
 }
 
+# ── Chainguard token audience ────────────────────────────────────────────────
+
+variable "create_application" {
+  description = "Create a dedicated Azure AD application to use as the token audience for Chainguard STS exchange. Set to false to supply token_scope and claim_match_audience directly."
+  type        = bool
+  default     = true
+}
+
+variable "token_scope" {
+  description = "OAuth2 scope passed to GetToken when requesting the managed identity token (e.g. 'api://<client-id>'). Required when create_application is false."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.create_application || var.token_scope != ""
+    error_message = "token_scope must be set when create_application is false."
+  }
+}
+
+variable "claim_match_audience" {
+  description = "Audience value to match in the Chainguard claim_match (the 'aud' claim of the issued token). Required when create_application is false."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.create_application || var.claim_match_audience != ""
+    error_message = "claim_match_audience must be set when create_application is false."
+  }
+}
+
+variable "claim_match_issuer" {
+  description = "Issuer to match in the Chainguard claim_match. Defaults to the v2 tenant-specific Azure AD issuer when empty."
+  type        = string
+  default     = ""
+}
+
 # ── Image replication ────────────────────────────────────────────────────────
 
 variable "dst_repo_prefix" {

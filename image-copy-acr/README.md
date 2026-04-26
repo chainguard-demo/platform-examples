@@ -21,7 +21,7 @@ Chainguard Subscription ──► Container App (ca-cgr-replicator)  [HTTPS]
 ```
 
 1. Chainguard sends a CloudEvent (HTTPS POST) to the Container App's public HTTPS endpoint whenever an image is pushed to any repository in your group.
-2. The app authenticates to `cgr.dev` using a Chainguard token exchanged via Azure AD workload identity.
+2. The app requests a managed identity token scoped to a dedicated Azure AD application.
 3. The app copies the image to the target ACR using its managed identity for authentication.
 
 ---
@@ -39,6 +39,8 @@ Chainguard Subscription ──► Container App (ca-cgr-replicator)  [HTTPS]
 | Role Assignment | `AcrPush` | Scoped to the resource group that contains the ACR |
 | Container App Environment | `ace-cgr-replicator` | Consumption (serverless) plan |
 | Container App | `ca-cgr-replicator` | Runs the ko-built replicator image |
+| Azure AD Application | `cgr-image-copier-chainguard-audience` | Permission-free app used as the token audience for Chainguard STS exchange |
+| Azure AD Service Principal | `cgr-image-copier-chainguard-audience` | Required for Azure AD to recognise the app as a valid token resource |
 
 ### Chainguard
 
@@ -65,6 +67,7 @@ The identity running Terraform needs:
 
 - **Contributor** (or equivalent) on the subscription or resource group to create resources
 - **User Access Administrator** on the ACR's resource group to assign AcrPull/AcrPush roles
+- **Permission to register Azure AD applications** — required when `create_application = true` (the default). Enabled for all users in most tenants. If app registration is disabled in your tenant, have an admin create the app, set `create_application = false` and supply `token_scope` and `claim_match_audience` (see security note in the Variables section).
 
 ### Chainguard permissions
 
@@ -87,17 +90,7 @@ chainctl auth login
 cp iac/terraform.tfvars.example iac/terraform.tfvars
 ```
 
-Edit `iac/terraform.tfvars`:
-
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `chainguard_org` | yes | — | Chainguard organization name (e.g. `your.org.com`) |
-| `location` | no | `eastus` | Azure region |
-| `dst_repo_prefix` | no | `chainguard` | Path prefix in the ACR for copied images |
-| `ignore_referrers` | no | `false` | Skip copying signature/attestation tags |
-| `verify_signatures` | no | `false` | Verify Chainguard signatures before copying |
-| `existing_acr_name` | no | `""` | Name of an existing ACR to use; leave blank to create one |
-| `existing_acr_resource_group` | no | `""` | Resource group of the existing ACR; required when `existing_acr_name` is set |
+Edit `iac/terraform.tfvars`. See the [Variables](#variables) section below for the full list of available variables.
 
 ### 3. Authenticate to the ACR
 
@@ -157,6 +150,32 @@ az containerapp logs show \
 | `verify_signatures` | no | `false` | Verify Chainguard signatures before copying |
 | `existing_acr_name` | no | `""` | Name of an existing ACR to use; leave blank to create one |
 | `existing_acr_resource_group` | no | `""` | Resource group of the existing ACR; required when `existing_acr_name` is set |
+| `create_application` | no | `true` | Create a dedicated Azure AD app to scope Chainguard tokens |
+| `token_scope` | no | `""` | OAuth2 scope passed to GetToken (e.g. `api://<client-id>`); required when `create_application = false` |
+| `claim_match_audience` | no | `""` | Expected `aud` claim in the issued token; required when `create_application = false` |
+| `claim_match_issuer` | no | `""` | Expected `iss` claim; defaults to the v2 tenant-specific Azure AD issuer |
+
+### Token audience security note
+
+When `create_application = true` (the default), Terraform creates a dedicated, permission-free Entra ID application and automatically derives `token_scope` and `claim_match_audience` from it. Because the app has no permissions and its client ID is unique to this deployment, the token cannot be used to access any Azure resource or accepted by any other federated identity service.
+
+If you don't have permissions to create an application, ask your administrator
+to create one for you and provide the client ID with the `token_scope` and
+`claim_match_audience` variables directly.
+
+```hcl
+create_application   = false
+token_scope          = "api://<client-id>"
+claim_match_audience = "<client-id>"
+```
+
+If you can't create an application, you may consider using the `api://AzureADTokenExchange` scope. However, be aware that `api://AzureADTokenExchange` is intended for inbound and cross-tenant workload identity federation. Tokens issued for it may be usable across other tenants or for applications that allow federation from other clouds — it is not scoped exclusively to Chainguard.
+
+```hcl
+create_application   = false
+token_scope          = "api://AzureADTokenExchange"
+claim_match_audience = "fb60f99c-7a34-4190-8149-302f77469936"
+```
 
 ## Outputs
 

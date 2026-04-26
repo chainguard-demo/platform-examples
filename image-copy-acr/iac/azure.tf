@@ -173,6 +173,10 @@ resource "azurerm_container_app" "replicator" {
         name  = "AZURE_TENANT_ID"
         value = data.azurerm_client_config.current.tenant_id
       }
+      env {
+        name  = "TOKEN_SCOPE"
+        value = local.token_scope
+      }
     }
   }
 

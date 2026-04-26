@@ -1,6 +1,7 @@
 terraform {
   required_providers {
     azurerm    = { source = "hashicorp/azurerm" }
+    azuread    = { source = "hashicorp/azuread" }
     chainguard = { source = "chainguard-dev/chainguard" }
     ko         = { source = "ko-build/ko" }
     random     = { source = "hashicorp/random" }
@@ -16,6 +17,8 @@ provider "azurerm" {
   #
   # environment     = "usgovernment"
 }
+
+provider "azuread" {}
 
 provider "chainguard" {}
 

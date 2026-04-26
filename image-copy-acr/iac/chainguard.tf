@@ -6,23 +6,19 @@ data "chainguard_group" "group" {
 # Create a Chainguard identity that trusts the Azure AD token issued to the
 # managed identity (mi-cgr-acr-pushpull).
 #
-# When the Container App calls the Azure IMDS endpoint
-#   http://169.254.169.254/metadata/identity/oauth2/token
-# it receives a JWT signed by Azure AD whose claims are:
-#   iss = https://login.microsoftonline.com/<tenant_id>/v2.0
-#   sub = <principal_id of the managed identity>
-#
-# The Chainguard STS will accept that token and exchange it for a
-# Chainguard access token scoped to this identity.
+# The Container App requests a managed identity token using local.effective_scope
+# as the OAuth2 scope, and Chainguard's STS validates the resulting JWT against
+# the claim_match below. When create_application = true (the default), scope and
+# audience are derived automatically from the created app registration.
 resource "chainguard_identity" "azure" {
   parent_id   = data.chainguard_group.group.id
   name        = "azure-container-app"
   description = "Identity for the image-copy-acr Container App in Azure"
 
   claim_match {
-    issuer   = "https://login.microsoftonline.com/${data.azurerm_client_config.current.tenant_id}/v2.0"
+    issuer   = local.claim_match_issuer
     subject  = azurerm_user_assigned_identity.mi.principal_id
-    audience = "fb60f99c-7a34-4190-8149-302f77469936"
+    audience = local.claim_match_audience
   }
 }
 
