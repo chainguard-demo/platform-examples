@@ -10,22 +10,21 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"slices"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
-	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"chainguard.dev/sdk/events"
 	"chainguard.dev/sdk/events/receiver"
 	"chainguard.dev/sdk/events/registry"
 	iam "chainguard.dev/sdk/proto/platform/iam/v1"
 	v1 "chainguard.dev/sdk/proto/platform/registry/v1"
 	"chainguard.dev/sdk/sts"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/chrismellard/docker-credential-acr-env/pkg/credhelper"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	cehttp "github.com/cloudevents/sdk-go/v2/protocol/http"
-	"github.com/chrismellard/docker-credential-acr-env/pkg/credhelper"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/crane"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -47,39 +46,27 @@ type envConfig struct {
 	VerifySignatures bool   `envconfig:"VERIFY_SIGNATURES" required:"true"`
 }
 
-var env envConfig
-var keychain authn.Keychain
-var azureCredential azcore.TokenCredential
-var azureKeychain authn.Keychain = authn.NewKeychainFromHelper(credhelper.NewACRCredentialsHelper())
+var (
+	env             envConfig
+	azureCredential azcore.TokenCredential
+)
+
+var keychain = authn.NewMultiKeychain(
+	cgKeychain{},
+	authn.NewKeychainFromHelper(credhelper.NewACRCredentialsHelper()),
+	authn.DefaultKeychain,
+)
 
 func init() {
-	if err := envconfig.Process("", &env); err != nil {
+	err := envconfig.Process("", &env)
+	if err != nil {
 		log.Panicf("failed to process env var: %s", err)
 	}
 
-	var cred azcore.TokenCredential
-	if clientID := strings.TrimSpace(os.Getenv("AZURE_CLIENT_ID")); clientID != "" {
-		c, err := azidentity.NewManagedIdentityCredential(&azidentity.ManagedIdentityCredentialOptions{
-			ID: azidentity.ClientID(clientID),
-		})
-		if err != nil {
-			log.Panicf("failed to initialize managed identity credential: %s", err)
-		}
-		cred = c
-	} else {
-		c, err := azidentity.NewDefaultAzureCredential(nil)
-		if err != nil {
-			log.Panicf("failed to initialize Azure credential: %s", err)
-		}
-		cred = c
+	azureCredential, err = azidentity.NewDefaultAzureCredential(nil)
+	if err != nil {
+		log.Panicf("failed to initialize Azure credential: %s", err)
 	}
-	azureCredential = cred
-
-	keychain = authn.NewMultiKeychain(
-		cgKeychain{},
-		azureKeychain,
-		authn.DefaultKeychain,
-	)
 }
 
 func main() {
@@ -316,5 +303,3 @@ func checkOpts(ctx context.Context) (*cosign.CheckOpts, error) {
 
 	return co, nil
 }
-
-
