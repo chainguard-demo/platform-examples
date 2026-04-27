@@ -1,7 +1,7 @@
 location   = "eastus"
 chainguard_org = "your.org.com"
 
-dst_repo_prefix   = "mirrors"
+dst_repo_prefix   = "cgr"
 
 # ignore_referrers
 #   Cosign publishes each image's signature and attestation as separate tags
@@ -13,7 +13,7 @@ dst_repo_prefix   = "mirrors"
 #           verified against the mirrored copy.
 #   false -> mirror everything, including .sig/.att referrers. Required if
 #           downstream consumers verify signatures from the mirrored repo.
-ignore_referrers  = false
+ignore_referrers  = true
 
 # verify_signatures
 #   true  -> before copying, verify the Chainguard image signature against the

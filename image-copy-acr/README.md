@@ -164,7 +164,7 @@ Successful replication events will look like:
 |---|---|---|---|
 | `chainguard_org` | yes | — | Chainguard organization name (e.g. `your.org.com`) |
 | `location` | no | `eastus` | Azure region (Update providers.tf as well for GovCloud) |
-| `dst_repo_prefix` | no | `chainguard` | Path prefix in the ACR for copied images |
+| `dst_repo_prefix` | no | `cgr` | Path prefix in the ACR for copied images |
 | `ignore_referrers` | no | `true` | Skip copying signature/attestation tags |
 | `verify_signatures` | no | `false` | Verify Chainguard signatures before copying |
 | `existing_acr_name` | no | `""` | Name of an existing ACR to use; leave blank to create one |
