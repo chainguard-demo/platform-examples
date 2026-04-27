@@ -1,11 +1,11 @@
 # image-copy-acr
 
-Terraform module that deploys the `image-copy-acr` service to Azure Container Apps. The service subscribes to Chainguard registry push events and automatically copies new images into an Azure Container Registry (ACR).
+This repo contains a Go application and a Terraform module that deploys the `image-copy-acr` service to Azure Container Apps. The service subscribes to Chainguard registry push events and automatically copies new images into an Azure Container Registry (ACR) when the event is received.
 
 > This is an image mirroring service, not a pull-through caching service.
 > This service will mirror all images in your Chainguard registry to your Azure Container Registry; it is not currently configured for targeted image replication.
 
-If you supply `existing_acr_name` (and `existing_acr_resource_group`), Terraform will reuse that registry instead of creating a new ACR instance. If you want to create a new ACR instance, leave both variables unset and Terraform creates a fresh Basic-tier ACR in the generated resource group. The rest of the deployment (Container App, managed identity, Chainguard identity and subscription) is identical.
+If you supply `existing_acr_name` (and `existing_acr_resource_group`), Terraform will reuse that registry instead of creating a new ACR instance. It will still create a new Resource Group to deploy the other required resources. If you want to create a new ACR instance, leave both variables unset and Terraform creates a fresh Basic-tier ACR in the generated resource group. The rest of the deployment (Container App, managed identity, Chainguard identity and subscription) is identical.
 
 ## How it works
 
@@ -142,6 +142,19 @@ az containerapp logs show \
   --name ca-cgr-replicator \
   --resource-group $(terraform output -raw resource_group) \
   --follow
+```
+
+You should see output similar to:
+```sh
+{"TimeStamp": "2026-04-27T21:07:15.01427", "Log": "Connecting to the container 'replicator'..."}
+{"TimeStamp": "2026-04-27T21:07:15.05442", "Log": "Successfully Connected to container: 'replicator' [Revision: 'ca-cgr-replicator--ralzvog', Replica: 'ca-cgr-replicator--ralzvog-76f4c6f8ff-z9dtl']"}
+```
+
+Successful replication events will look like:
+```sh
+got event: {Actor:... Body:..}"}
+{"TimeStamp": "2026-04-27T21:14:23.2467673+00:00", "Log": "21:14:23 Copying cgr.dev/.../replication-test-002:sha256-79ce567997e2af25eff7dc7eab8e3422c4c86cdb75d480fb665aead7fab868f5.sig to acrcgrqiwfg3i1.azurecr.io/cgr/replication-test-002:sha256-79ce567997e2af25eff7dc7eab8e3422c4c86cdb75d480fb665aead7fab868f5.sig..."}
+
 ```
 
 ---
