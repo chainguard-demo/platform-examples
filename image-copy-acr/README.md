@@ -151,7 +151,7 @@ az containerapp logs show \
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `chainguard_org` | yes | — | Chainguard organization name (e.g. `your.org.com`) |
-| `location` | no | `eastus` | Azure region |
+| `location` | no | `eastus` | Azure region (Update providers.tf as well for GovCloud) |
 | `dst_repo_prefix` | no | `chainguard` | Path prefix in the ACR for copied images |
 | `ignore_referrers` | no | `false` | Skip copying signature/attestation tags |
 | `verify_signatures` | no | `false` | Verify Chainguard signatures before copying |
