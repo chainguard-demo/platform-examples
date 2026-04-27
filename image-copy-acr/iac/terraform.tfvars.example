@@ -2,7 +2,27 @@ location   = "eastus"
 chainguard_org = "your.org.com"
 
 dst_repo_prefix   = "mirrors"
+
+# ignore_referrers
+#   Cosign publishes each image's signature and attestation as separate tags
+#   named "sha256-<digest>.sig" and "sha256-<digest>.att" (the OCI referrer
+#   convention). They look like hashes but are the actual tag references.
+#
+#   true  -> skip those tags; only semantic tags (e.g. "1.2.3", "latest") are
+#           mirrored to ACR. Cleaner ACR listing; signatures cannot be
+#           verified against the mirrored copy.
+#   false -> mirror everything, including .sig/.att referrers. Required if
+#           downstream consumers verify signatures from the mirrored repo.
 ignore_referrers  = false
+
+# verify_signatures
+#   true  -> before copying, verify the Chainguard image signature against the
+#           public Sigstore trust root and the APKO_BUILDER / CATALOG_SYNCER
+#           identities. Adds a network call to Rekor per image and fails the
+#           copy if verification fails. The verified digest (not the tag) is
+#           used as the source ref for the copy, so you mirror exactly what
+#           was verified.
+#   false -> copy without verification. Faster; trust the source registry.
 verify_signatures = false
 
 # ── Existing ACR (optional) ──────────────────────────────────────────────────
