@@ -152,9 +152,8 @@ You should see output similar to:
 
 Successful replication events will look like:
 ```sh
-got event: {Actor:... Body:..}"}
-{"TimeStamp": "2026-04-27T21:14:23.2467673+00:00", "Log": "21:14:23 Copying cgr.dev/.../replication-test-002:sha256-79ce567997e2af25eff7dc7eab8e3422c4c86cdb75d480fb665aead7fab868f5.sig to acrcgrqiwfg3i1.azurecr.io/cgr/replication-test-002:sha256-79ce567997e2af25eff7dc7eab8e3422c4c86cdb75d480fb665aead7fab868f5.sig..."}
-
+{"TimeStamp": "2026-04-27T21:49:57.5512087+00:00", "Log": "21:49:57 Copying cgr.dev/.../replication-test-004:latest-dev to acrcgrqiwfg3i1.azurecr.io/cgr/replication-test-004:latest-dev..."}
+{"TimeStamp": "2026-04-27T21:49:57.8207404+00:00", "Log": "21:49:57 Copied!"}
 ```
 
 ---
@@ -166,7 +165,7 @@ got event: {Actor:... Body:..}"}
 | `chainguard_org` | yes | — | Chainguard organization name (e.g. `your.org.com`) |
 | `location` | no | `eastus` | Azure region (Update providers.tf as well for GovCloud) |
 | `dst_repo_prefix` | no | `chainguard` | Path prefix in the ACR for copied images |
-| `ignore_referrers` | no | `false` | Skip copying signature/attestation tags |
+| `ignore_referrers` | no | `true` | Skip copying signature/attestation tags |
 | `verify_signatures` | no | `false` | Verify Chainguard signatures before copying |
 | `existing_acr_name` | no | `""` | Name of an existing ACR to use; leave blank to create one |
 | `existing_acr_resource_group` | no | `""` | Resource group of the existing ACR; required when `existing_acr_name` is set |
