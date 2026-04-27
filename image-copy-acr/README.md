@@ -140,7 +140,7 @@ You can also check the Container App logs in the Azure Portal or via:
 ```sh
 az containerapp logs show \
   --name ca-cgr-replicator \
-  --resource-group $(terraform output -raw resource_group) \
+  --resource-group $(tf output -raw resource_group) \
   --follow
 ```
 
