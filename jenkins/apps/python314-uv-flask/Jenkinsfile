@@ -1,0 +1,74 @@
+pipeline {
+  agent none
+  options { timestamps() }
+
+  environment {
+    IMAGE = 'ttl.sh/smalls-pytest:3-14'
+  }
+
+  stages {
+    stage('Checkout') {
+      agent any
+      steps {
+        sh 'cp -R /sources/apps/python314-uv-flask/. .'
+        stash name: 'src', includes: '**'
+      }
+    }
+
+    stage('Build deps') {
+      agent {
+        docker {
+          image 'cgr.dev/smalls.xyz/python:3.14-dev'
+          // Run as root: uv needs to write to /usr/lib/python3.14/site-packages
+          // which the default uid (65532) can't touch.
+          args '--user 0 --entrypoint='
+          reuseNode true
+        }
+      }
+      steps {
+        unstash 'src'
+        // Sanity-check that the dependency declaration in pyproject.toml
+        // resolves cleanly under the build image. The runtime image's
+        // site-packages is populated separately by the Dockerfile.
+        sh 'uv pip install --system --no-cache flask'
+        sh 'python -c "import flask; print(\\"flask\\", flask.__version__)"'
+      }
+    }
+
+    stage('Image build') {
+      agent any
+      steps {
+        unstash 'src'
+        sh 'docker build -t "$IMAGE" .'
+      }
+    }
+
+    stage('Test') {
+      agent any
+      steps {
+        // Run the built runtime image (which is shell-less) using an in-process
+        // Flask test client — no port mapping or networking required.
+        sh '''
+          set -e
+          out=$(docker run --rm --entrypoint=python -e PYTHONPATH=/app "$IMAGE" -c "
+from app import app
+c = app.test_client()
+r = c.get('/')
+assert r.status_code == 200, 'unexpected status: ' + str(r.status_code)
+assert b'Hello from Flask on Chainguard' in r.data, 'greeting missing'
+print('Smoke test passed')
+")
+          echo "$out"
+        '''
+      }
+    }
+
+    stage('Push') {
+      agent any
+      steps {
+        sh 'docker push "$IMAGE"'
+        sh 'docker image inspect --format "Pushed {{.RepoTags}} digest={{index .RepoDigests 0}}" "$IMAGE"'
+      }
+    }
+  }
+}

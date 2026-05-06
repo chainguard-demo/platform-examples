@@ -19,6 +19,10 @@ def apps = [
     name: 'openjdk21-gradle',
     description: 'Standalone runnable JAR built with Gradle on Chainguard OpenJDK 21 images',
   ],
+  [
+    name: 'python314-uv-flask',
+    description: 'Flask app on Chainguard Python 3.14 with uv; archived as OCI image to ttl.sh',
+  ],
 ]
 
 apps.each { app ->
