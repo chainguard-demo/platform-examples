@@ -1,0 +1,8 @@
+configuration-as-code
+job-dsl
+workflow-aggregator
+docker-workflow
+pipeline-utility-steps
+git
+timestamper
+ws-cleanup

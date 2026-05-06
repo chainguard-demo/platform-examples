@@ -1,0 +1,21 @@
+jenkins:
+  systemMessage: "Chainguard Jenkins demo — pipelines build & test on cgr.dev/smalls.xyz images."
+  numExecutors: 2
+  mode: NORMAL
+  scmCheckoutRetryCount: 0
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "admin"
+          password: "${JENKINS_ADMIN_PASSWORD:-admin}"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+
+unclassified:
+  location:
+    url: "http://localhost:8080/"
+
+jobs:
+  - file: /tmp/cgjenkins-home/casc/jobs.groovy
