@@ -18,7 +18,7 @@ pipeline {
     stage('Build deps') {
       agent {
         docker {
-          image 'cgr.dev/smalls.xyz/python:3.14-dev'
+          image "cgr.dev/${env.CHAINGUARD_ORG}/python:3.14-dev"
           // Run as root: uv needs to write to /usr/lib/python3.14/site-packages
           // which the default uid (65532) can't touch.
           args '--user 0 --entrypoint='
@@ -39,7 +39,7 @@ pipeline {
       agent any
       steps {
         unstash 'src'
-        sh 'docker build -t "$IMAGE" .'
+        sh 'docker build --build-arg CHAINGUARD_ORG="$CHAINGUARD_ORG" -t "$IMAGE" .'
       }
     }
 

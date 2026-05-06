@@ -2,7 +2,7 @@
 
 A self-contained Jenkins server running on Chainguard images, with seven pipeline jobs that build and test sample applications across Java, Python, and Node — using Chainguard `*-dev` build images and Chainguard runtime images throughout.
 
-All Jenkins infrastructure and all build/test/runtime images come from `cgr.dev/smalls.xyz`.
+All Jenkins infrastructure and all build/test/runtime images come from `cgr.dev/<your-chainguard-org>` (default `smalls.xyz` — see [Configuration](#configuration)).
 
 ## Sample applications
 
@@ -24,7 +24,7 @@ All Jenkins infrastructure and all build/test/runtime images come from `cgr.dev/
 flowchart LR
   user[User]
   host[(Host Docker daemon<br/>OrbStack / Docker Desktop)]
-  jenkins[Jenkins controller<br/>cgr.dev/smalls.xyz/jenkins:2-lts-jdk21-dev]
+  jenkins[Jenkins controller<br/>cgr.dev/&dollar;CHAINGUARD_ORG/jenkins:2-lts-jdk21-dev]
   apps[(./apps/*<br/>local sources)]
   build[Per-stage build container<br/>maven / gradle / python:3.x-dev / node:N-dev]
   test[Per-stage test container<br/>jre / python:3.x / node:N or n-slim]
@@ -38,7 +38,7 @@ flowchart LR
   jenkins -.->|docker push| ttl
 ```
 
-Jenkins is built from [Dockerfile.jenkins](Dockerfile.jenkins), which layers a fixed plugin set and the Chainguard `docker-cli` binary onto `cgr.dev/smalls.xyz/jenkins:2-lts-jdk21-dev` (the controller runs on JDK 21; sample apps targeting older JDKs build inside their own per-stage Chainguard images). On startup, [Jenkins Configuration as Code (JCasC)](jenkins/casc/jenkins.yaml) creates the admin user and seeds pipeline jobs from [jobs.groovy](jenkins/casc/jobs.groovy) by reading each app's `Jenkinsfile` from disk.
+Jenkins is built from [Dockerfile.jenkins](Dockerfile.jenkins), which layers a fixed plugin set and the Chainguard `docker-cli` binary onto `cgr.dev/$CHAINGUARD_ORG/jenkins:2-lts-jdk21-dev` (the controller runs on JDK 21; sample apps targeting older JDKs build inside their own per-stage Chainguard images). On startup, [Jenkins Configuration as Code (JCasC)](jenkins/casc/jenkins.yaml) creates the admin user and seeds pipeline jobs from [jobs.groovy](jenkins/casc/jobs.groovy) by reading each app's `Jenkinsfile` from disk.
 
 The controller talks to the **host's Docker daemon** via the mounted `/var/run/docker.sock` (DooD pattern). When a pipeline stage uses `agent { docker { image '...' } }`, Jenkins asks the host to spawn the build container. To make this work cleanly, `JENKINS_HOME` is bind-mounted from `/tmp/cgjenkins-home` at the **same absolute path on host and container** — so when the controller hands the host a `-v <workspace>:<workspace>` flag, the workspace path actually exists on the host.
 
@@ -47,16 +47,33 @@ Each sample application lives under [apps/](apps/) as if it were a separate repo
 ## Prerequisites
 
 - Docker (Docker Desktop, OrbStack, or Linux Docker engine)
-- `chainctl` CLI, authenticated against an org with access to `cgr.dev/smalls.xyz/*`
+- `chainctl` CLI, authenticated against an org with access to `cgr.dev/<your-org>/*`
 
 Verify auth:
 ```sh
 chainctl auth status
 ```
 
+## Configuration
+
+The demo defaults to pulling Chainguard images from `cgr.dev/smalls.xyz/`. To use a different org (e.g. the public `chainguard` catalog or your own org):
+
+```sh
+cp .env.example .env
+# edit CHAINGUARD_ORG in .env
+```
+
+`.env` is loaded automatically by `docker-compose`, propagated to the controller container as an env var, and consumed by Jenkinsfiles (via `env.CHAINGUARD_ORG`), the controller Dockerfile, and per-app Dockerfiles (via build ARG). `setup.sh` also sources `.env`, so the pull token is generated against the configured org.
+
+After changing the org, regenerate the pull token and rebuild:
+```sh
+./setup.sh
+docker compose up -d --build
+```
+
 ## Quick start
 
-**Step 1 — Generate the registry pull token.** [setup.sh](setup.sh) calls `chainctl auth pull-token create` and writes a Docker config to `.secrets/docker-config.json` (gitignored). Re-run when the token expires (default TTL is 30 days).
+**Step 1 — Generate the registry pull token.** [setup.sh](setup.sh) calls `chainctl auth pull-token create` for `$CHAINGUARD_ORG` (or `smalls.xyz` if unset) and writes a Docker config to `.secrets/docker-config.json` (gitignored). Re-run when the token expires (default TTL is 30 days).
 
 ```sh
 cd jenkins
@@ -108,7 +125,7 @@ These bit me while building out the seven samples — useful to know up front wh
   - **Gradle**: `environment { GRADLE_USER_HOME = "${WORKSPACE}/.gradle" }`
   - **npm / pnpm**: `environment { HOME = "${WORKSPACE}" }`
 - **Chainguard's `python:3.x-dev` runs as uid 65532**, which can't write to the system site-packages. For pipelines that want to `pip install --system` or `uv pip install --system`, pass `args '--user 0 --entrypoint='` in the Jenkinsfile **and** add `USER 0` to the corresponding stage in the Dockerfile.
-- **OCI-image pipelines push to ttl.sh** (anonymous, public, 24h TTL) so no registry auth is needed inside the pipeline. The Jenkins controller's docker config (mounted from `.secrets/docker-config.json`, generated by [setup.sh](setup.sh)) handles `cgr.dev/smalls.xyz` pulls; pushes to `ttl.sh` need no creds.
+- **OCI-image pipelines push to ttl.sh** (anonymous, public, 24h TTL) so no registry auth is needed inside the pipeline. The Jenkins controller's docker config (mounted from `.secrets/docker-config.json`, generated by [setup.sh](setup.sh)) handles `cgr.dev/$CHAINGUARD_ORG` pulls; pushes to `ttl.sh` need no creds.
 
 ## Teardown
 

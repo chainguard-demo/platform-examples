@@ -1,8 +1,15 @@
 jenkins:
-  systemMessage: "Chainguard Jenkins demo — pipelines build & test on cgr.dev/smalls.xyz images."
+  systemMessage: "Chainguard Jenkins demo — pipelines build & test on cgr.dev/${CHAINGUARD_ORG}/ images."
   numExecutors: 2
   mode: NORMAL
   scmCheckoutRetryCount: 0
+  # Surface the controller-process CHAINGUARD_ORG env var into pipeline `env`
+  # so Jenkinsfiles can use ${env.CHAINGUARD_ORG} in agent docker image strings.
+  globalNodeProperties:
+    - envVars:
+        env:
+          - key: CHAINGUARD_ORG
+            value: ${CHAINGUARD_ORG}
   securityRealm:
     local:
       allowsSignup: false

@@ -14,7 +14,7 @@ pipeline {
     stage('Build') {
       agent {
         docker {
-          image 'cgr.dev/smalls.xyz/maven:3-jdk17-dev'
+          image "cgr.dev/${env.CHAINGUARD_ORG}/maven:3-jdk17-dev"
           // Chainguard images set ENTRYPOINT to the main binary; clear it so
           // Jenkins' `cat` command keeps the container alive for `docker exec`.
           args '--entrypoint='
@@ -31,7 +31,7 @@ pipeline {
     stage('Test') {
       agent {
         docker {
-          image 'cgr.dev/smalls.xyz/amazon-corretto-jre:17-dev'
+          image "cgr.dev/${env.CHAINGUARD_ORG}/amazon-corretto-jre:17-dev"
           args '--entrypoint='
           reuseNode true
         }

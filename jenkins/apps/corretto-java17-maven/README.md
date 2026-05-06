@@ -2,6 +2,8 @@
 
 Hello-world Spring Boot console app, built with Maven on Amazon Corretto JDK 17.
 
+> Image references below show the default org (`smalls.xyz`); see the demo's top-level [README](../../README.md#configuration) for how to switch.
+
 ## Pipeline images
 
 | Stage | Image |

@@ -15,7 +15,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.jenkins
+      args:
+        CHAINGUARD_ORG: ${CHAINGUARD_ORG:-smalls.xyz}
     environment:
+      # Surface the configured org to pipelines (Jenkinsfiles read env.CHAINGUARD_ORG)
+      # and to JCasC (jenkins.yaml interpolates ${CHAINGUARD_ORG}).
+      CHAINGUARD_ORG: ${CHAINGUARD_ORG:-smalls.xyz}
       JENKINS_HOME: /tmp/cgjenkins-home
       CASC_JENKINS_CONFIG: /tmp/cgjenkins-home/casc
       JENKINS_ADMIN_PASSWORD: admin

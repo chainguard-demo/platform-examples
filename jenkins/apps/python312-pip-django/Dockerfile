@@ -4,13 +4,15 @@
 # install. Stage 2 then copies the populated site-packages into the shell-less
 # python:3.12 runtime image — same Python minor version on both sides keeps
 # the packages compatible.
-FROM cgr.dev/smalls.xyz/python:3.12-dev AS build
+ARG CHAINGUARD_ORG=smalls.xyz
+
+FROM cgr.dev/${CHAINGUARD_ORG}/python:3.12-dev AS build
 USER 0
 WORKDIR /app
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-FROM cgr.dev/smalls.xyz/python:3.12
+FROM cgr.dev/${CHAINGUARD_ORG}/python:3.12
 COPY --from=build /usr/lib/python3.12/site-packages /usr/lib/python3.12/site-packages
 COPY app.py /app/app.py
 WORKDIR /app

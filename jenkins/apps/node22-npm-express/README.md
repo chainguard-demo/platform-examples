@@ -2,7 +2,9 @@
 
 Hello-world Express web app on Chainguard's Node 22, with `npm` as the package manager. Pipeline artifact is an OCI image pushed to `ttl.sh/smalls-nodetest:22`.
 
-> Note: PLAN.md originally called for Node 21, but that line is EOL and not in the smalls.xyz catalog. We use Node 22 LTS (the natural successor) instead.
+> Image references below show the default org (`smalls.xyz`); see the demo's top-level [README](../../README.md#configuration) for how to switch.
+
+> Note: PLAN.md originally called for Node 21, but that line is EOL and not in the catalog. We use Node 22 LTS (the natural successor) instead.
 
 ## Pipeline images
 

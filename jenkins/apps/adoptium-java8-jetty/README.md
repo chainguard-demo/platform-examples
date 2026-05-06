@@ -2,6 +2,8 @@
 
 Hello-world Jetty/JSP web app, built with Maven on Adoptium JDK 8 and packaged as a self-executing WAR.
 
+> Image references below show the default org (`smalls.xyz`); see the demo's top-level [README](../../README.md#configuration) for how to switch.
+
 ## Pipeline images
 
 | Stage | Image |

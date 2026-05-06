@@ -14,7 +14,7 @@ pipeline {
     stage('Build') {
       agent {
         docker {
-          image 'cgr.dev/smalls.xyz/jdk:openjdk-21-dev'
+          image "cgr.dev/${env.CHAINGUARD_ORG}/jdk:openjdk-21-dev"
           args '--entrypoint='
           reuseNode true
         }
@@ -34,7 +34,7 @@ pipeline {
     stage('Test') {
       agent {
         docker {
-          image 'cgr.dev/smalls.xyz/jre:openjdk-21-dev'
+          image "cgr.dev/${env.CHAINGUARD_ORG}/jre:openjdk-21-dev"
           args '--entrypoint='
           reuseNode true
         }

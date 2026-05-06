@@ -2,6 +2,8 @@
 
 Hello-world Express web app on Chainguard's Node 25, with `pnpm` as the package manager and `node:25-slim` as the runtime variant. Pipeline artifact is an OCI image pushed to `ttl.sh/smalls-nodetest:25`.
 
+> Image references below show the default org (`smalls.xyz`); see the demo's top-level [README](../../README.md#configuration) for how to switch.
+
 ## Pipeline images
 
 | Stage       | Image |

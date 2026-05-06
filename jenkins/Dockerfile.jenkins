@@ -3,14 +3,20 @@
 #   2. plugins stage: use the -dev jenkins variant (has shell) to run jenkins-plugin-cli
 #   3. final stage: ship on the standard jenkins image with plugins baked in
 
-FROM cgr.dev/smalls.xyz/docker-cli:29 AS docker
+# Configurable via build-arg from docker-compose; see jenkins/.env.example.
+ARG CHAINGUARD_ORG=smalls.xyz
 
-FROM cgr.dev/smalls.xyz/jenkins:2-lts-jdk21-dev AS plugins
+ARG CHAINGUARD_ORG
+FROM cgr.dev/${CHAINGUARD_ORG}/docker-cli:29 AS docker
+
+ARG CHAINGUARD_ORG
+FROM cgr.dev/${CHAINGUARD_ORG}/jenkins:2-lts-jdk21-dev AS plugins
 USER 0
 COPY jenkins/plugins.txt /tmp/plugins.txt
 RUN jenkins-plugin-cli --plugin-file /tmp/plugins.txt --verbose
 
-FROM cgr.dev/smalls.xyz/jenkins:2-lts-jdk21-dev
+ARG CHAINGUARD_ORG
+FROM cgr.dev/${CHAINGUARD_ORG}/jenkins:2-lts-jdk21-dev
 USER 0
 COPY --from=docker /usr/bin/docker /usr/local/bin/docker
 COPY --from=plugins --chown=1000:1000 /usr/share/jenkins/ref/plugins/ /usr/share/jenkins/ref/plugins/

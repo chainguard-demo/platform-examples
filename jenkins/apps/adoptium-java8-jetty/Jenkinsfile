@@ -14,7 +14,7 @@ pipeline {
     stage('Build') {
       agent {
         docker {
-          image 'cgr.dev/smalls.xyz/maven:3-jdk8-dev'
+          image "cgr.dev/${env.CHAINGUARD_ORG}/maven:3-jdk8-dev"
           args '--entrypoint='
           reuseNode true
         }
@@ -29,7 +29,7 @@ pipeline {
     stage('Test') {
       agent {
         docker {
-          image 'cgr.dev/smalls.xyz/adoptium-jre:adoptium-openjdk-8-dev'
+          image "cgr.dev/${env.CHAINGUARD_ORG}/adoptium-jre:adoptium-openjdk-8-dev"
           args '--entrypoint='
           reuseNode true
         }

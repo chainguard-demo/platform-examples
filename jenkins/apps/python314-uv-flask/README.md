@@ -2,6 +2,8 @@
 
 Hello-world Flask web app on Chainguard's Python 3.14, with `uv` as the package manager. The pipeline's archived artifact is an OCI image pushed to `ttl.sh/smalls-pytest:3-14` — not a file checked into Jenkins' archive store.
 
+> Image references below show the default org (`smalls.xyz`); see the demo's top-level [README](../../README.md#configuration) for how to switch.
+
 ## Pipeline images
 
 | Stage       | Image |

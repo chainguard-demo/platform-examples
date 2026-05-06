@@ -18,7 +18,7 @@ pipeline {
     stage('Build deps') {
       agent {
         docker {
-          image 'cgr.dev/smalls.xyz/node:25-dev'
+          image "cgr.dev/${env.CHAINGUARD_ORG}/node:25-dev"
           args '--entrypoint='
           reuseNode true
         }
@@ -39,7 +39,7 @@ pipeline {
       agent any
       steps {
         unstash 'src'
-        sh 'docker build -t "$IMAGE" .'
+        sh 'docker build --build-arg CHAINGUARD_ORG="$CHAINGUARD_ORG" -t "$IMAGE" .'
       }
     }
 

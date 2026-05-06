@@ -1,10 +1,20 @@
 #!/usr/bin/env bash
-# One-time setup: generate a Chainguard pull token for the smalls.xyz org and
+# One-time setup: generate a Chainguard pull token for the configured Chainguard
+# org (default smalls.xyz; override via .env or CHAINGUARD_ORG env var) and
 # write a Docker config.json that the Jenkins container will use to pull
-# cgr.dev/smalls.xyz/* images. Re-run when the token expires.
+# cgr.dev/<org>/* images. Re-run when the token expires.
 set -euo pipefail
 
 cd "$(dirname "$0")"
+
+# Pick up CHAINGUARD_ORG from .env if present, so the script and docker-compose
+# stay in sync without the user having to export the variable twice.
+if [[ -f .env ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source .env
+  set +a
+fi
 
 ORG="${CHAINGUARD_ORG:-smalls.xyz}"
 TOKEN_NAME="${TOKEN_NAME:-jenkins-demo}"

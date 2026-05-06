@@ -2,6 +2,8 @@
 
 Hello-world standalone runnable JAR built with Gradle on Chainguard's OpenJDK 21.
 
+> Image references below show the default org (`smalls.xyz`); see the demo's top-level [README](../../README.md#configuration) for how to switch.
+
 ## Pipeline images
 
 | Stage | Image |
