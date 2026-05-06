@@ -7,3 +7,7 @@ apps/*/target/
 # Gradle build outputs and local caches — produced when running pipelines locally.
 apps/*/build/
 apps/*/.gradle/
+
+# Node module dirs — produced when running npm/pnpm install locally.
+apps/*/node_modules/
+apps/*/.pnpm-store/

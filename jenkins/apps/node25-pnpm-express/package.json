@@ -1,0 +1,14 @@
+{
+  "name": "hello-node25-pnpm-express",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Hello-world Express app on Chainguard Node 25 (slim) using pnpm",
+  "main": "server.js",
+  "engines": {
+    "node": ">=25"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "nanoid": "^5.1.0"
+  }
+}

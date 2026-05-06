@@ -1,0 +1,84 @@
+pipeline {
+  agent none
+  options { timestamps() }
+
+  environment {
+    IMAGE = 'ttl.sh/smalls-nodetest:25'
+  }
+
+  stages {
+    stage('Checkout') {
+      agent any
+      steps {
+        sh 'cp -R /sources/apps/node25-pnpm-express/. .'
+        stash name: 'src', includes: '**'
+      }
+    }
+
+    stage('Build deps') {
+      agent {
+        docker {
+          image 'cgr.dev/smalls.xyz/node:25-dev'
+          args '--entrypoint='
+          reuseNode true
+        }
+      }
+      // Jenkins runs the agent container as uid 1000 with no writable HOME, so
+      // point pnpm's store/cache at the workspace where it has write access.
+      environment {
+        HOME = "${WORKSPACE}"
+      }
+      steps {
+        unstash 'src'
+        sh 'pnpm install --prod --frozen-lockfile'
+        sh 'node -e "console.log(\\"express\\", require(\\"express/package.json\\").version, \\"nanoid\\", require(\\"nanoid/package.json\\").version)"'
+      }
+    }
+
+    stage('Image build') {
+      agent any
+      steps {
+        unstash 'src'
+        sh 'docker build -t "$IMAGE" .'
+      }
+    }
+
+    stage('Test') {
+      agent any
+      steps {
+        sh '''
+          set -e
+          out=$(docker run --rm --entrypoint=/usr/bin/node "$IMAGE" -e "
+const http = require('http');
+const app = require('/app/server.js');
+const server = app.listen(0, '127.0.0.1', () => {
+  const port = server.address().port;
+  http.get('http://127.0.0.1:' + port + '/', (res) => {
+    let body = '';
+    res.on('data', (d) => body += d);
+    res.on('end', () => {
+      server.close();
+      if (res.statusCode === 200 && body.includes('Hello from Node on Chainguard (slim)')) {
+        console.log('Smoke test passed');
+        process.exit(0);
+      }
+      console.error('Smoke test FAILED status=' + res.statusCode);
+      process.exit(1);
+    });
+  }).on('error', (e) => { console.error(e); process.exit(2); });
+});
+")
+          echo "$out"
+        '''
+      }
+    }
+
+    stage('Push') {
+      agent any
+      steps {
+        sh 'docker push "$IMAGE"'
+        sh 'docker image inspect --format "Pushed {{.RepoTags}} digest={{index .RepoDigests 0}}" "$IMAGE"'
+      }
+    }
+  }
+}

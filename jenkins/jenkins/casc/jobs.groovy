@@ -31,6 +31,10 @@ def apps = [
     name: 'node22-npm-express',
     description: 'Express app on Chainguard Node 22 with npm; archived as OCI image to ttl.sh',
   ],
+  [
+    name: 'node25-pnpm-express',
+    description: 'Express app on Chainguard Node 25 (slim runtime) with pnpm; archived as OCI image to ttl.sh',
+  ],
 ]
 
 apps.each { app ->
