@@ -44,6 +44,8 @@ The controller talks to the **host's Docker daemon** via the mounted `/var/run/d
 
 Each sample application lives under [apps/](apps/) as if it were a separate repository. The controller's first pipeline stage (`Checkout`) copies the app sources from the bind-mounted `/sources/apps/<name>/` into the workspace. Subsequent stages stash/unstash to share artifacts.
 
+Pipelines never hardcode image strings. Instead they call `cgImage('<token>')` from the [cgImages shared library](shared-libraries/cg-images/) — e.g. `cgImage('corretto-java17').build` resolves to the right `cgr.dev/<org>/maven:3-jdk17-dev`. The library is auto-loaded by JCasC from a bind-mounted filesystem path, so adding/changing a token is a one-file edit and the next pipeline run picks it up automatically (no controller restart needed). See the library's [README](shared-libraries/cg-images/README.md#caveats) for a few caveats around editing it.
+
 ## Prerequisites
 
 - Docker (Docker Desktop, OrbStack, or Linux Docker engine)
@@ -103,7 +105,7 @@ A clean build takes 10s–40s once images are cached locally; the Gradle pipelin
 ## Adding another sample app
 
 1. Create a directory under [apps/](apps/), e.g. `apps/my-new-app/`.
-2. Add the application source plus a `Jenkinsfile`. Use the same shape as the existing ones — first stage should `cp -R /sources/apps/<name>/. .` and stash, subsequent stages unstash and run.
+2. Add the application source plus a `Jenkinsfile`. Use the same shape as the existing ones — first stage should `cp -R /sources/apps/<name>/. .` and stash, subsequent stages unstash and run. Reference Chainguard images via `cgImage('<token>')` (see [shared-libraries/cg-images](shared-libraries/cg-images/)); add a new token there if needed.
 3. Append one block to the `apps` list in [jenkins/casc/jobs.groovy](jenkins/casc/jobs.groovy).
 4. Restart and reload Jenkins so JCasC re-runs the seed and the new job is loaded:
    ```sh

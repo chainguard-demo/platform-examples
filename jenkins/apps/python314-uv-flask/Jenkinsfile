@@ -1,3 +1,5 @@
+def img = cgImage('python-3.14')
+
 pipeline {
   agent none
   options { timestamps() }
@@ -18,7 +20,7 @@ pipeline {
     stage('Build deps') {
       agent {
         docker {
-          image "cgr.dev/${env.CHAINGUARD_ORG}/python:3.14-dev"
+          image img.build
           // Run as root: uv needs to write to /usr/lib/python3.14/site-packages
           // which the default uid (65532) can't touch.
           args '--user 0 --entrypoint='

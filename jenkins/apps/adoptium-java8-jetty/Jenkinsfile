@@ -1,3 +1,5 @@
+def img = cgImage('adoptium-java8')
+
 pipeline {
   agent none
   options { timestamps() }
@@ -14,7 +16,7 @@ pipeline {
     stage('Build') {
       agent {
         docker {
-          image "cgr.dev/${env.CHAINGUARD_ORG}/maven:3-jdk8-dev"
+          image img.build
           args '--entrypoint='
           reuseNode true
         }
@@ -29,7 +31,7 @@ pipeline {
     stage('Test') {
       agent {
         docker {
-          image "cgr.dev/${env.CHAINGUARD_ORG}/adoptium-jre:adoptium-openjdk-8-dev"
+          image img.test
           args '--entrypoint='
           reuseNode true
         }

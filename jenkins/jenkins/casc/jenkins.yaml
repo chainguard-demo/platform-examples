@@ -23,6 +23,17 @@ jenkins:
 unclassified:
   location:
     url: "http://localhost:8080/"
+  globalLibraries:
+    libraries:
+      - name: cgImages
+        # Auto-loaded for every pipeline (no @Library annotation needed).
+        implicit: true
+        defaultVersion: master
+        retriever:
+          legacySCM:
+            scm:
+              filesystem:
+                path: /tmp/cgjenkins-home/shared-libraries/cg-images
 
 jobs:
   - file: /tmp/cgjenkins-home/casc/jobs.groovy

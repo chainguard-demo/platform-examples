@@ -6,3 +6,7 @@ pipeline-utility-steps
 git
 timestamper
 ws-cleanup
+# Filesystem SCM — lets Jenkins shared libraries load from a local directory
+# instead of a remote Git repo. We use it to source the cg-images library
+# from the bind-mounted ./shared-libraries dir.
+filesystem_scm

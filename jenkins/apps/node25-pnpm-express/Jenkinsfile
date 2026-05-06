@@ -1,3 +1,5 @@
+def img = cgImage('node-25')
+
 pipeline {
   agent none
   options { timestamps() }
@@ -18,7 +20,7 @@ pipeline {
     stage('Build deps') {
       agent {
         docker {
-          image "cgr.dev/${env.CHAINGUARD_ORG}/node:25-dev"
+          image img.build
           args '--entrypoint='
           reuseNode true
         }

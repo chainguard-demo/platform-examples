@@ -38,4 +38,5 @@ services:
       - /tmp/cgjenkins-home:/tmp/cgjenkins-home
       - ./jenkins/casc:/tmp/cgjenkins-home/casc:ro
       - ./apps:/sources/apps:ro
+      - ./shared-libraries:/tmp/cgjenkins-home/shared-libraries:ro
       - ./.secrets/docker-config.json:/tmp/cgjenkins-home/.docker/config.json:ro
