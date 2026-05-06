@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.example</groupId>
+    <artifactId>hello-jetty-jdk8</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>war</packaging>
+    <name>hello-jetty-jdk8</name>
+    <description>Hello-world Jetty/JSP runnable WAR built on Adoptium JDK 8</description>
+
+    <properties>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <jetty.version>9.4.58.v20250814</jetty.version>
+    </properties>
+
+    <dependencies>
+        <!-- Runtime scope so they ship in WEB-INF/lib but stay off the compile classpath
+             — the Main launcher uses pure JDK classes and loads Jetty reflectively. -->
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-server</artifactId>
+            <version>${jetty.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-webapp</artifactId>
+            <version>${jetty.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>apache-jsp</artifactId>
+            <version>${jetty.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <!-- jetty-annotations registers the ServletContainerInitializer scanning that
+             apache-jsp's JettyJasperInitializer relies on (it installs the InstanceManager
+             that Jasper needs when compiling JSPs). -->
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-annotations</artifactId>
+            <version>${jetty.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <finalName>app</finalName>
+        <plugins>
+            <plugin>
+                <artifactId>maven-war-plugin</artifactId>
+                <version>3.4.0</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>com.example.Main</mainClass>
+                        </manifest>
+                    </archive>
+                    <!-- Copy the launcher class to the WAR root so `java -jar app.war`
+                         can find it — the default location WEB-INF/classes is invisible
+                         to the JAR launcher. -->
+                    <webResources>
+                        <resource>
+                            <directory>${project.build.outputDirectory}</directory>
+                            <targetPath>/</targetPath>
+                            <includes>
+                                <include>com/example/Main.class</include>
+                            </includes>
+                        </resource>
+                    </webResources>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

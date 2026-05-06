@@ -1,0 +1,70 @@
+pipeline {
+  agent none
+  options { timestamps() }
+
+  stages {
+    stage('Checkout') {
+      agent any
+      steps {
+        sh 'cp -R /sources/apps/adoptium-java8-jetty/. .'
+        stash name: 'src', includes: '**', excludes: 'target/**'
+      }
+    }
+
+    stage('Build') {
+      agent {
+        docker {
+          image 'cgr.dev/smalls.xyz/maven:3-jdk8-dev'
+          args '--entrypoint='
+          reuseNode true
+        }
+      }
+      steps {
+        unstash 'src'
+        sh 'mvn -B -ntp clean package'
+        stash name: 'app-war', includes: 'target/app.war'
+      }
+    }
+
+    stage('Test') {
+      agent {
+        docker {
+          image 'cgr.dev/smalls.xyz/adoptium-jre:adoptium-openjdk-8-dev'
+          args '--entrypoint='
+          reuseNode true
+        }
+      }
+      steps {
+        unstash 'app-war'
+        // Smoke test: launch the runnable WAR, wait for it to listen, fetch
+        // index.jsp, verify the page rendered, then shut it down.
+        sh '''
+          set -eu
+          java -jar target/app.war > server.log 2>&1 &
+          PID=$!
+          trap "kill ${PID} 2>/dev/null || true" EXIT
+          for i in $(seq 1 30); do
+            if wget -q -O response.html http://127.0.0.1:8080/ 2>/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          echo "--- response.html ---"
+          cat response.html
+          echo "--- server.log ---"
+          cat server.log
+          grep -q "Hello from Jetty on Chainguard" response.html
+          echo "Smoke test passed"
+        '''
+      }
+    }
+
+    stage('Archive') {
+      agent any
+      steps {
+        unstash 'app-war'
+        archiveArtifacts artifacts: 'target/app.war', fingerprint: true
+      }
+    }
+  }
+}

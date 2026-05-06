@@ -11,6 +11,10 @@ def apps = [
     name: 'corretto-java17-maven',
     description: 'Spring Boot built with Maven on Chainguard Corretto JDK 17 images',
   ],
+  [
+    name: 'adoptium-java8-jetty',
+    description: 'Jetty/JSP runnable WAR built on Chainguard Adoptium JDK 8 images',
+  ],
 ]
 
 apps.each { app ->
