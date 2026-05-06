@@ -23,6 +23,10 @@ def apps = [
     name: 'python314-uv-flask',
     description: 'Flask app on Chainguard Python 3.14 with uv; archived as OCI image to ttl.sh',
   ],
+  [
+    name: 'python312-pip-django',
+    description: 'Django site on Chainguard Python 3.12 with pip; archived as OCI image to ttl.sh',
+  ],
 ]
 
 apps.each { app ->

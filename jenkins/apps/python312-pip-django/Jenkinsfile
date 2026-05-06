@@ -1,0 +1,72 @@
+pipeline {
+  agent none
+  options { timestamps() }
+
+  environment {
+    IMAGE = 'ttl.sh/smalls-pytest:3-12'
+  }
+
+  stages {
+    stage('Checkout') {
+      agent any
+      steps {
+        sh 'cp -R /sources/apps/python312-pip-django/. .'
+        stash name: 'src', includes: '**'
+      }
+    }
+
+    stage('Build deps') {
+      agent {
+        docker {
+          image 'cgr.dev/smalls.xyz/python:3.12-dev'
+          // pip needs to write to /usr/lib/python3.12/site-packages, which the
+          // default uid (65532) can't touch.
+          args '--user 0 --entrypoint='
+          reuseNode true
+        }
+      }
+      steps {
+        unstash 'src'
+        sh 'pip install --no-cache-dir -r requirements.txt'
+        sh 'python -c "import django; print(\\"django\\", django.get_version())"'
+      }
+    }
+
+    stage('Image build') {
+      agent any
+      steps {
+        unstash 'src'
+        sh 'docker build -t "$IMAGE" .'
+      }
+    }
+
+    stage('Test') {
+      agent any
+      steps {
+        // Run the built shell-less runtime image with --entrypoint=python and
+        // exercise the Django test client in-process — no need for ports or
+        // cross-container networking.
+        sh '''
+          set -e
+          out=$(docker run --rm --entrypoint=python -e PYTHONPATH=/app "$IMAGE" -c "
+import app  # configures settings via settings.configure()
+from django.test import Client
+r = Client().get('/')
+assert r.status_code == 200, 'unexpected status: ' + str(r.status_code)
+assert b'Hello from Django on Chainguard' in r.content, 'greeting missing'
+print('Smoke test passed')
+")
+          echo "$out"
+        '''
+      }
+    }
+
+    stage('Push') {
+      agent any
+      steps {
+        sh 'docker push "$IMAGE"'
+        sh 'docker image inspect --format "Pushed {{.RepoTags}} digest={{index .RepoDigests 0}}" "$IMAGE"'
+      }
+    }
+  }
+}
