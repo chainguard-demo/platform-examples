@@ -15,6 +15,10 @@ def apps = [
     name: 'adoptium-java8-jetty',
     description: 'Jetty/JSP runnable WAR built on Chainguard Adoptium JDK 8 images',
   ],
+  [
+    name: 'openjdk21-gradle',
+    description: 'Standalone runnable JAR built with Gradle on Chainguard OpenJDK 21 images',
+  ],
 ]
 
 apps.each { app ->

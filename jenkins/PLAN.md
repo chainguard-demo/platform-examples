@@ -55,3 +55,8 @@ Create sub-directories for the various sample applications with Jenkins pipeline
   - test with the node:25-slim image
   - Artifact to archive is a new image based on node:25-slim image and pushed to ttl.sh/smalls-nodetest:25
 
+## Future enhancements
+- Decouple the demo from the smalls.xyz hard-coded org, make that configurable
+- Add a harbor image registry option as a pull-through-mirror
+- Use that harbor server as a destination for image pushes instead of ttl.sh
+

@@ -3,3 +3,7 @@
 
 # Maven build outputs — produced when running pipelines locally for verification.
 apps/*/target/
+
+# Gradle build outputs and local caches — produced when running pipelines locally.
+apps/*/build/
+apps/*/.gradle/

@@ -1,0 +1,63 @@
+pipeline {
+  agent none
+  options { timestamps() }
+
+  stages {
+    stage('Checkout') {
+      agent any
+      steps {
+        sh 'cp -R /sources/apps/openjdk21-gradle/. .'
+        stash name: 'src', includes: '**', excludes: 'build/**, .gradle/**'
+      }
+    }
+
+    stage('Build') {
+      agent {
+        docker {
+          image 'cgr.dev/smalls.xyz/jdk:openjdk-21-dev'
+          args '--entrypoint='
+          reuseNode true
+        }
+      }
+      // Jenkins runs the agent container as uid 1000 with no writable HOME, so
+      // point Gradle's user home at the workspace where it has write access.
+      environment {
+        GRADLE_USER_HOME = "${WORKSPACE}/.gradle"
+      }
+      steps {
+        unstash 'src'
+        sh './gradlew --no-daemon clean jar'
+        stash name: 'app-jar', includes: 'build/libs/app.jar'
+      }
+    }
+
+    stage('Test') {
+      agent {
+        docker {
+          image 'cgr.dev/smalls.xyz/jre:openjdk-21-dev'
+          args '--entrypoint='
+          reuseNode true
+        }
+      }
+      steps {
+        unstash 'app-jar'
+        sh '''
+          set -e
+          out=$(java -jar build/libs/app.jar)
+          echo "$out"
+          echo "$out" | grep -q "Hello from Gradle on Chainguard"
+          echo "$out" | grep -q "java.version : 21"
+          echo "Smoke test passed"
+        '''
+      }
+    }
+
+    stage('Archive') {
+      agent any
+      steps {
+        unstash 'app-jar'
+        archiveArtifacts artifacts: 'build/libs/app.jar', fingerprint: true
+      }
+    }
+  }
+}
