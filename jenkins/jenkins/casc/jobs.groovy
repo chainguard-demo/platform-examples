@@ -27,6 +27,10 @@ def apps = [
     name: 'python312-pip-django',
     description: 'Django site on Chainguard Python 3.12 with pip; archived as OCI image to ttl.sh',
   ],
+  [
+    name: 'node22-npm-express',
+    description: 'Express app on Chainguard Node 22 with npm; archived as OCI image to ttl.sh',
+  ],
 ]
 
 apps.each { app ->

@@ -1,0 +1,89 @@
+pipeline {
+  agent none
+  options { timestamps() }
+
+  environment {
+    IMAGE = 'ttl.sh/smalls-nodetest:22'
+  }
+
+  stages {
+    stage('Checkout') {
+      agent any
+      steps {
+        sh 'cp -R /sources/apps/node22-npm-express/. .'
+        stash name: 'src', includes: '**'
+      }
+    }
+
+    stage('Build deps') {
+      agent {
+        docker {
+          image 'cgr.dev/smalls.xyz/node:22-dev'
+          args '--entrypoint='
+          reuseNode true
+        }
+      }
+      // Jenkins runs the agent container as uid 1000 with no writable HOME, so
+      // point npm's cache at the workspace where it has write access.
+      environment {
+        HOME = "${WORKSPACE}"
+      }
+      steps {
+        unstash 'src'
+        // Smoke-check the dependency declaration on the dev image. The runtime
+        // image's node_modules is populated separately by the Dockerfile.
+        sh 'npm install --no-audit --no-fund'
+        sh 'node -e "console.log(\\"express\\", require(\\"express/package.json\\").version)"'
+      }
+    }
+
+    stage('Image build') {
+      agent any
+      steps {
+        unstash 'src'
+        sh 'docker build -t "$IMAGE" .'
+      }
+    }
+
+    stage('Test') {
+      agent any
+      steps {
+        // Run the built shell-less runtime image with the entrypoint overridden
+        // to evaluate an inline test script: bind to an ephemeral port, hit /,
+        // assert the rendered HTML, exit. No host networking, no port mapping.
+        sh '''
+          set -e
+          out=$(docker run --rm --entrypoint=/usr/bin/node "$IMAGE" -e "
+const http = require('http');
+const app = require('/app/server.js');
+const server = app.listen(0, '127.0.0.1', () => {
+  const port = server.address().port;
+  http.get('http://127.0.0.1:' + port + '/', (res) => {
+    let body = '';
+    res.on('data', (d) => body += d);
+    res.on('end', () => {
+      server.close();
+      if (res.statusCode === 200 && body.includes('Hello from Node on Chainguard')) {
+        console.log('Smoke test passed');
+        process.exit(0);
+      }
+      console.error('Smoke test FAILED status=' + res.statusCode);
+      process.exit(1);
+    });
+  }).on('error', (e) => { console.error(e); process.exit(2); });
+});
+")
+          echo "$out"
+        '''
+      }
+    }
+
+    stage('Push') {
+      agent any
+      steps {
+        sh 'docker push "$IMAGE"'
+        sh 'docker image inspect --format "Pushed {{.RepoTags}} digest={{index .RepoDigests 0}}" "$IMAGE"'
+      }
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "hello-node22-express",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Hello-world Express app on Chainguard Node 22",
+  "main": "server.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "picocolors": "^1.1.1"
+  }
+}
