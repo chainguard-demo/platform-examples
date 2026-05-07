@@ -68,12 +68,22 @@ else
   PUSH_TO_HARBOR=false
 fi
 
-# Where to push if not Harbor.
+# Where to push if not Harbor. No baked-in default — if a previous setup.sh
+# run persisted a value in .env, offer that as the suggested default;
+# otherwise loop until the user enters something explicit.
 if [[ "$PUSH_TO_HARBOR" == "true" ]]; then
   PUSH_REGISTRY="localhost/library"
 else
-  read -rp "Where should pipelines push their built images? [ttl.sh/smalls]: " PUSH_REG_INPUT
-  PUSH_REGISTRY="${PUSH_REG_INPUT:-ttl.sh/smalls}"
+  PUSH_REGISTRY_DEFAULT="${PUSH_REGISTRY:-}"
+  PUSH_REGISTRY=""
+  while [[ -z "$PUSH_REGISTRY" ]]; do
+    if [[ -n "$PUSH_REGISTRY_DEFAULT" ]]; then
+      read -rp "Where should pipelines push their built images? [last used: ${PUSH_REGISTRY_DEFAULT}]: " PUSH_REG_INPUT
+      PUSH_REGISTRY="${PUSH_REG_INPUT:-$PUSH_REGISTRY_DEFAULT}"
+    else
+      read -rp "Where should pipelines push their built images? (e.g. ttl.sh/your-prefix): " PUSH_REGISTRY
+    fi
+  done
 fi
 
 # Where to pull cgr.dev images from.
