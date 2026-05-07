@@ -23,8 +23,24 @@ if [[ -z "${CHAINGUARD_ORG:-}" ]]; then
 fi
 ORG="$CHAINGUARD_ORG"
 
+# Route digest lookups through PULL_REGISTRY rather than cgr.dev directly:
+# in Mode A that's still cgr.dev/<org> (using whatever docker auth is in
+# DOCKER_CONFIG), but in Modes B/C it's the anonymous Harbor proxy at
+# localhost/cgr-proxy/<org>, which sidesteps the need for cgr.dev creds in
+# the crane agent. Either way the manifest digest crane returns is the
+# same — Harbor proxy serves the upstream manifest verbatim.
+REGISTRY="${PULL_REGISTRY:-cgr.dev/${ORG}}"
+# crane uses go-containerregistry, whose reference parser rejects bare
+# 'localhost' as a registry hostname (treats it as a Docker Hub path
+# component) and falls back to index.docker.io. The fix is the same one
+# we apply in cgSign / cgVerify: rewrite 'localhost/...' to 'localhost:80/...'
+# so the parser sees a host:port and recognises localhost as the registry.
+case "$REGISTRY" in
+  localhost/*) REGISTRY="localhost:80/${REGISTRY#localhost/}" ;;
+esac
+
 CATALOG=vars/cgImage.groovy
-echo "Refreshing digests in ${CATALOG} against cgr.dev/${ORG}/..."
+echo "Refreshing digests in ${CATALOG} against ${REGISTRY}/..."
 
 # Extract every single-quoted "<repo>:<tag>" or "<repo>:<tag>@sha256:..." entry
 # from the catalog. We deduplicate by the repo:tag portion (everything before
@@ -53,7 +69,7 @@ cp "$CATALOG" "$tmp"
 
 for reftag in "${!reftags[@]}"; do
   printf '  %-50s ' "$reftag"
-  digest=$(crane digest "cgr.dev/${ORG}/${reftag}")
+  digest=$(crane digest "${REGISTRY}/${reftag}")
   echo "$digest"
   pinned="${reftag}@${digest}"
 

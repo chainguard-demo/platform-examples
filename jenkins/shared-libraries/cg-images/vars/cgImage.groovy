@@ -55,12 +55,12 @@ def call(String token) {
       test:  'jre:openjdk-21-dev@sha256:5c7d9d0287cf9bd4c4d3df39f532a028a0f019d96b60a12862c2dc29d9c740fb',
     ],
     'python-3.14': [
-      build:   'python:3.14-dev@sha256:3e01b7cc5c6ec2615546784c78e85ac6d1fefa5e07666515d8d32463952adc96',
-      runtime: 'python:3.14@sha256:7d66fd00301532cfffae8baf4a00f4e590d8bb0a6a1efe5a468a38aacaf970f1',
+      build:   'python:3.14-dev@sha256:9eba3fde174d8eab51be61c3440f06c529449e1bf2e05edf17cab02feb03a0fb',
+      runtime: 'python:3.14@sha256:ecb71c9df61b0cf7b94133e41e2c152a8a08fdc1e200891f52c1916642e93e49',
     ],
     'python-3.12': [
-      build:   'python:3.12-dev@sha256:c4205ab4b2e326c214f4d438c8cb7fffc093ffc95a4a1b67c40c8657b1851f47',
-      runtime: 'python:3.12@sha256:0f0c12676d9e4cb87d20c7d88716003c914529f4793d1968c4fbc707ed504198',
+      build:   'python:3.12-dev@sha256:a17a4c58449b7cf93325ab18d75c9cb180bd8a82cfb6adb24d93c64a5c645ed7',
+      runtime: 'python:3.12@sha256:010f22ee9a4eeb2d1be561f235659c84544f4f04fb39234bf408d389f4d3d212',
     ],
     'node-22': [
       build:   'node:22-dev@sha256:4bc74862aec7fcfcf518e8606dbc0d7cdc294a1a062c6323a42bda40dd443969',

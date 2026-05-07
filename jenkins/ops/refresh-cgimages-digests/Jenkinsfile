@@ -33,8 +33,19 @@ pipeline {
           // tree (rw) and the pull-token docker config are already visible at
           // /tmp/cgjenkins-home/... — no extra `-v` flags needed.
           //   -- entrypoint:    clear so Jenkins' cat-keepalive works
+          //   -- network host:  crane resolves localhost:80 (Harbor proxy in
+          //      Modes B/C) the same way the host docker daemon does. Without
+          //      this, the agent container's own loopback intercepts the
+          //      lookup and produces "connection refused" on Mode B/C runs.
+          //      Harmless in Mode A — there's nothing on host port 80 then,
+          //      and crane talks to cgr.dev over public DNS regardless.
           //   -- DOCKER_CONFIG: point crane at the inherited pull-token config
-          args '--entrypoint= -e DOCKER_CONFIG=/tmp/cgjenkins-home/.docker'
+          //   -- CHAINGUARD_ORG / PULL_REGISTRY: forward from controller env
+          //      so refresh-digests.sh queries through the right registry —
+          //      cgr.dev directly in Mode A, anonymous Harbor proxy in B/C.
+          //      The docker-workflow plugin only carries env vars listed
+          //      here into the agent container.
+          args "--entrypoint= --network host -e DOCKER_CONFIG=/tmp/cgjenkins-home/.docker -e CHAINGUARD_ORG=${env.CHAINGUARD_ORG} -e PULL_REGISTRY=${env.PULL_REGISTRY}"
           reuseNode true
         }
       }
