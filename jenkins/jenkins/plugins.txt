@@ -20,3 +20,7 @@ oidc-provider
 # (file), and password (string). Pipelines pull all three through
 # `withCredentials` in cgSign.groovy / cgVerify.groovy.
 plain-credentials
+# pipeline-graph-view — modern stage-graph UI that renders the build's
+# Pipeline Overview tab as a left-to-right graph. Easier to scan than the
+# classic Stage View, especially for pipelines with many sequential stages.
+pipeline-graph-view
