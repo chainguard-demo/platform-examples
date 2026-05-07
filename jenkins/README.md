@@ -44,7 +44,9 @@ The controller talks to the **host's Docker daemon** via the mounted `/var/run/d
 
 Each sample application lives under [apps/](apps/) as if it were a separate repository. The controller's first pipeline stage (`Checkout`) copies the app sources from the bind-mounted `/sources/apps/<name>/` into the workspace. Subsequent stages stash/unstash to share artifacts.
 
-Pipelines never hardcode image strings. Instead they call `cgImage('<token>')` from the [cgImages shared library](shared-libraries/cg-images/) — e.g. `cgImage('corretto-java17').build` resolves to the right `cgr.dev/<org>/maven:3-jdk17-dev`. The library is auto-loaded by JCasC from a bind-mounted filesystem path, so adding/changing a token is a one-file edit and the next pipeline run picks it up automatically (no controller restart needed). See the library's [README](shared-libraries/cg-images/README.md#caveats) for a few caveats around editing it.
+Pipelines never hardcode image strings. Instead they call `cgImage('<token>')` from the [cgImages shared library](shared-libraries/cg-images/) — e.g. `cgImage('corretto-java17').build` resolves to the right `cgr.dev/<org>/maven:3-jdk17-dev@sha256:<digest>`. Catalog entries are pinned by digest for reproducibility. The library is auto-loaded by JCasC from a bind-mounted filesystem path, so adding/changing a token is a one-file edit and the next pipeline run picks it up automatically (no controller restart needed). See the library's [README](shared-libraries/cg-images/README.md#caveats) for caveats around editing it.
+
+A scheduled Jenkins job, [refresh-cgimages-digests](ops/refresh-cgimages-digests/), re-resolves every catalog entry against the registry every 4 hours so digest pins keep up with upstream tag movements automatically.
 
 ## Prerequisites
 

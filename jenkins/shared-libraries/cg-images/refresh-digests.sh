@@ -63,5 +63,12 @@ done
 
 mv "$tmp" "$CATALOG"
 echo
-echo "Done. Diff:"
-git --no-pager diff -- "$CATALOG" || true
+# Show a diff if git is available and we're inside a checkout (e.g. running
+# from a developer's laptop); silently skip otherwise (e.g. inside the crane
+# container the Jenkins job runs in, which has no git).
+if command -v git >/dev/null 2>&1 && git -C "$(dirname "$CATALOG")" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "Done. Diff:"
+  git --no-pager diff -- "$CATALOG" || true
+else
+  echo "Done."
+fi

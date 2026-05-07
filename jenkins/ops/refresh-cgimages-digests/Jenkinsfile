@@ -1,0 +1,47 @@
+// Scheduled job that re-resolves the digests in the cgImages shared library
+// catalog every 4 hours. Runs the existing refresh-digests.sh inside a
+// Chainguard crane container so the controller doesn't need crane baked in.
+//
+// The shared-libraries bind mount is :rw in docker-compose.yml — when this
+// job rewrites vars/cgImage.groovy, the change is visible on the host
+// filesystem (i.e. in the user's git checkout) and the next sample-app
+// pipeline run picks up the new digests automatically (filesystem-SCM
+// live-reload — see shared-libraries/cg-images/README.md#caveats).
+
+pipeline {
+  agent none
+  options { timestamps() }
+
+  // The seed in jobs.groovy sets the trigger via Jobs DSL; the schedule is
+  // captured here as documentation. Editing this comment does not change
+  // when the job runs — edit jobs.groovy and restart the controller for that.
+  //
+  // Schedule: H H/4 * * *  (every 4 hours, randomized per controller)
+
+  stages {
+    stage('Refresh digests') {
+      agent {
+        docker {
+          image "cgr.dev/${env.CHAINGUARD_ORG}/crane:latest-dev"
+          // The agent inherits the controller's mounts via `--volumes-from`
+          // (Jenkins docker-workflow plugin default), so the shared-libraries
+          // tree (rw) and the pull-token docker config are already visible at
+          // /tmp/cgjenkins-home/... — no extra `-v` flags needed.
+          //   -- entrypoint:    clear so Jenkins' cat-keepalive works
+          //   -- DOCKER_CONFIG: point crane at the inherited pull-token config
+          args '--entrypoint= -e DOCKER_CONFIG=/tmp/cgjenkins-home/.docker'
+          reuseNode true
+        }
+      }
+      steps {
+        sh '/tmp/cgjenkins-home/shared-libraries/cg-images/refresh-digests.sh'
+      }
+    }
+  }
+
+  post {
+    success {
+      echo "Refresh complete. Any digest changes are picked up on the next sample-app pipeline run automatically."
+    }
+  }
+}

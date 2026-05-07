@@ -48,3 +48,18 @@ apps.each { app ->
     }
   }
 }
+
+// Ops jobs — internal Jenkins maintenance pipelines (not sample app builds).
+pipelineJob('refresh-cgimages-digests') {
+  description('Re-resolves cgImages catalog digests every 4 hours so sample-app pipelines stay current with upstream tag movements.')
+  triggers {
+    // H H/4 * * * — every 4 hours, randomized per controller.
+    cron('H H/4 * * *')
+  }
+  definition {
+    cps {
+      script(new File('/sources/ops/refresh-cgimages-digests/Jenkinsfile').text)
+      sandbox(true)
+    }
+  }
+}

@@ -38,5 +38,8 @@ services:
       - /tmp/cgjenkins-home:/tmp/cgjenkins-home
       - ./jenkins/casc:/tmp/cgjenkins-home/casc:ro
       - ./apps:/sources/apps:ro
-      - ./shared-libraries:/tmp/cgjenkins-home/shared-libraries:ro
+      - ./ops:/sources/ops:ro
+      # shared-libraries is read-write so the refresh-cgimages-digests job
+      # can rewrite vars/cgImage.groovy in place when image tags repoint.
+      - ./shared-libraries:/tmp/cgjenkins-home/shared-libraries:rw
       - ./.secrets/docker-config.json:/tmp/cgjenkins-home/.docker/config.json:ro
