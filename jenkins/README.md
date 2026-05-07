@@ -136,11 +136,21 @@ These bit me while building out the seven samples — useful to know up front wh
 
 ## Teardown
 
+[`teardown.sh`](teardown.sh) reverses everything `setup.sh` (and Harbor's `deploy.sh`) put in place — Harbor kind cluster, Chainguard assumed identity (`terraform destroy`), Jenkins controller container + image, the persisted `/tmp/cgjenkins-home`, and all generated state/secret files. It prompts before doing anything destructive.
+
 ```sh
-docker compose down
-sudo rm -rf /tmp/cgjenkins-home   # remove the persisted Jenkins home
-rm -rf .secrets                   # remove any stale pull-token Docker config
-harbor/teardown.sh                # delete the Harbor kind cluster (no-op if not deployed)
+./teardown.sh             # keeps .env so re-running setup.sh remembers CHAINGUARD_ORG
+./teardown.sh --wipe-env  # full reset, including .env
+```
+
+If you'd rather do it by hand (or skip a step):
+
+```sh
+harbor/teardown.sh                                         # delete the Harbor kind cluster
+( cd iac && terraform destroy -auto-approve ... )          # release the Chainguard identity
+docker compose down --rmi local --remove-orphans           # stop Jenkins
+sudo rm -rf /tmp/cgjenkins-home                            # persisted Jenkins home
+rm -rf .secrets harbor/.pull-token shared-libraries/cg-images/IDENTITY
 ```
 
 ## Notes
