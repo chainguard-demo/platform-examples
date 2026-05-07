@@ -87,6 +87,30 @@ credentials:
               # AND serves JWKS at http://localhost:8080/oidc/jwks. With a
               # custom issuer set per-credential, the plugin would refuse
               # to serve JWKS at all (see plugin source: Keys.java).
+          # Cosign keypair used by cgSign / cgVerify to sign and verify the
+          # OCI images pushed by the Python/Node pipelines. setup.sh generates
+          # the keypair to /tmp/cgjenkins-home/.secrets/ once and reuses it on
+          # every re-run; the JCasC `${readFileBase64:…}` resolver loads the
+          # key + pub bytes into Jenkins's encrypted credentials store at boot.
+          # After that, /tmp/cgjenkins-home/.secrets/ is only used as the seed
+          # source — pipelines fetch creds by ID via withCredentials.
+          - file:
+              scope: GLOBAL
+              id: cosign-private-key
+              fileName: cosign.key
+              description: "cosign private key (encrypted with cosign-password)"
+              secretBytes: "${readFileBase64:/tmp/cgjenkins-home/.secrets/cosign.key}"
+          - file:
+              scope: GLOBAL
+              id: cosign-public-key
+              fileName: cosign.pub
+              description: "cosign public key — used by cgVerify"
+              secretBytes: "${readFileBase64:/tmp/cgjenkins-home/.secrets/cosign.pub}"
+          - string:
+              scope: GLOBAL
+              id: cosign-password
+              description: "passphrase that decrypts cosign-private-key"
+              secret: "${COSIGN_PASSWORD}"
 
 jobs:
   - file: /tmp/cgjenkins-home/casc/jobs.groovy

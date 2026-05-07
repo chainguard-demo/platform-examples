@@ -4,6 +4,7 @@
 #   - Chainguard assumed identity (terraform destroy on iac/, if state present)
 #   - Jenkins controller container + image
 #   - JENKINS_HOME bind-mount at /tmp/cgjenkins-home (needs sudo)
+#   - cosign keys (under /tmp/cgjenkins-home/.secrets/, wiped with cgjenkins-home)
 #   - .secrets/, harbor/.pull-token, IDENTITY file, terraform state files
 #
 # Leaves .env in place (so re-running setup.sh remembers your CHAINGUARD_ORG

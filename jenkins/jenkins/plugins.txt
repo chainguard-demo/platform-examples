@@ -15,3 +15,8 @@ filesystem_scm
 # token as a string credential, which cgLogin then exchanges for a Chainguard
 # chainctl session.
 oidc-provider
+# plain-credentials — provides the "Secret file" and "Secret text" credential
+# types JCasC uses to register the cosign signing key (file), public key
+# (file), and password (string). Pipelines pull all three through
+# `withCredentials` in cgSign.groovy / cgVerify.groovy.
+plain-credentials

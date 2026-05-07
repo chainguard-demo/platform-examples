@@ -75,5 +75,15 @@ print('Smoke test passed')
         sh 'docker image inspect --format "Pushed {{.RepoTags}} digest={{index .RepoDigests 0}}" "$IMAGE"'
       }
     }
+
+    stage('Sign') {
+      agent any
+      steps { cgSign(env.IMAGE) }
+    }
+
+    stage('Verify') {
+      agent any
+      steps { cgVerify(env.IMAGE) }
+    }
   }
 }

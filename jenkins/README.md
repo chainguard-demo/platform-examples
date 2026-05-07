@@ -103,8 +103,27 @@ Open <http://localhost:8080> (`admin` / `admin`; override the password via `JENK
 3. **Build (deps)** — install/compile in a Chainguard `*-dev` agent container.
 4. **Test** — smoke-test in either the runtime image or its `-dev` variant (see [Common gotchas](#common-gotchas) below).
 5. **Archive / Push** — Java pipelines archive their JAR/WAR to Jenkins. Python/Node pipelines build a runtime OCI image and push it to `$PUSH_REGISTRY` (ttl.sh in Modes A/B, the local Harbor `library` project in Mode C).
+6. **Sign / Verify** *(OCI-image pipelines only)* — `cgSign()` signs the pushed image with cosign using a keypair generated once by `setup.sh` (cached on disk at `/tmp/cgjenkins-home/.secrets/`). At Jenkins boot, JCasC reads those files and registers them as three encrypted credentials in the Jenkins store: `cosign-private-key` (Secret file), `cosign-public-key` (Secret file), and `cosign-password` (Secret text). Pipelines pull them via `withCredentials()` — Jenkins materializes the key as a workspace temp file and masks the password in build logs. `cgVerify()` then re-pulls the signature and validates it against the public-key credential, failing the build if it doesn't match. The signature lives as a sibling OCI artifact at `<repo>:sha256-<digest>.sig` in whatever registry was the push target. Cosign runs as a one-shot container with `--network host` (so `localhost` resolves to the same ingress the docker daemon uses) and inherits the controller's `$DOCKER_CONFIG` so it pushes the signature with the same credentials as `docker push`.
 
 A clean build takes 10s–40s once images are cached locally; the Gradle pipeline is slower on first run (~1m45s) because the Gradle wrapper has to download the Gradle distribution.
+
+### Verifying a signed image after the build
+
+The public key sits at `/tmp/cgjenkins-home/.secrets/cosign.pub`. To check a pushed image from outside Jenkins, run cosign in a host-network container so `localhost` resolves to your ingress:
+
+```sh
+DIGEST=$(docker image inspect --format '{{index .RepoDigests 0}}' localhost/library/pytest:3-14)
+# cosign's reference parser rejects bare 'localhost' (it tries Docker Hub),
+# so rewrite to 'localhost:80' before passing to cosign:
+DIGEST="${DIGEST/#localhost\//localhost:80/}"
+docker run --rm --network host \
+  -v /tmp/cgjenkins-home/.secrets:/secrets:ro \
+  --entrypoint=/usr/bin/cosign \
+  cgr.dev/${CHAINGUARD_ORG}/cosign:latest-dev \
+  verify --allow-http-registry --key /secrets/cosign.pub "$DIGEST"
+```
+
+Use the **digest** form, not a tag — cosign signatures are bound to image digests. The keypair persists at `/tmp/cgjenkins-home/.secrets/` until `./teardown.sh` wipes it, so signatures from prior builds stay verifiable across `setup.sh` re-runs as long as that directory is intact.
 
 ## Adding another sample app
 

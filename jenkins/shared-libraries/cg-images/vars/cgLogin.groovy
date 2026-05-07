@@ -33,6 +33,11 @@ def call() {
   if (harborEnabled) {
     if (pushRegistry.startsWith('localhost/')) {
       // Mode C: write Harbor admin creds for push.
+      // Two entries with the same auth: cosign's reference parser rejects
+      // bare 'localhost' (treats it as a Docker Hub path), so cgSign rewrites
+      // refs to 'localhost:80/...' before invoking cosign — which then looks
+      // up auth keyed by 'localhost:80'. Docker push uses the bare 'localhost'
+      // key. Keep both so both code paths find creds.
       sh '''
         set -eu
         mkdir -p "$DOCKER_CONFIG"
@@ -40,11 +45,12 @@ def call() {
         cat > "$DOCKER_CONFIG/config.json" <<EOF
 {
   "auths": {
-    "localhost": { "auth": "$AUTH" }
+    "localhost":    { "auth": "$AUTH" },
+    "localhost:80": { "auth": "$AUTH" }
   }
 }
 EOF
-        echo "cgLogin: configured Harbor admin auth for localhost (Mode C)."
+        echo "cgLogin: configured Harbor admin auth for localhost / localhost:80 (Mode C)."
       '''
     } else {
       // Mode B: anonymous everywhere, nothing to write.

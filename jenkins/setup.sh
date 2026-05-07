@@ -79,6 +79,45 @@ echo "    Pulls from:     ${PULL_REGISTRY}"
 echo "    Pushes to:      ${PUSH_REGISTRY}"
 echo
 
+# ---- Phase 1a: ensure cosign keypair exists -----------------------------
+# Pipelines that build OCI images sign their pushed images with cosign and
+# then verify the signature in the same build. The keypair lives at
+# /tmp/cgjenkins-home/.secrets/ — same absolute path on host and in the
+# Jenkins container — so cgSign() can spawn a sibling cosign container
+# (`docker run --network host …`) that bind-mounts the same path back in.
+# The keypair is generated once (cached) and reused on every re-run.
+
+COSIGN_DIR=/tmp/cgjenkins-home/.secrets
+echo "==> Ensuring cosign keypair is present in ${COSIGN_DIR}/..."
+mkdir -p "$COSIGN_DIR"
+if [[ ! -f "$COSIGN_DIR/cosign.key" ]]; then
+  echo "    Generating new cosign keypair..."
+  GEN_COSIGN_PASSWORD="$(openssl rand -base64 24)"
+  printf '%s' "$GEN_COSIGN_PASSWORD" > "$COSIGN_DIR/cosign.password"
+  docker run --rm \
+    --user "$(id -u):$(id -g)" \
+    -e "COSIGN_PASSWORD=$GEN_COSIGN_PASSWORD" \
+    -v "$COSIGN_DIR:/work" \
+    -w /work \
+    --entrypoint=/usr/bin/cosign \
+    "cgr.dev/${ORG}/cosign:latest-dev" \
+    generate-key-pair
+  # 644 so the Jenkins container (uid 1000) and the spawned cosign container
+  # can both read these regardless of the host's uid. The private key stays
+  # encrypted with COSIGN_PASSWORD, so world-readable is fine for a local demo.
+  chmod 644 "$COSIGN_DIR"/cosign.key "$COSIGN_DIR"/cosign.pub "$COSIGN_DIR"/cosign.password
+  unset GEN_COSIGN_PASSWORD
+  echo "    Keypair written to ${COSIGN_DIR}/cosign.{key,pub,password}"
+else
+  echo "    Reusing existing keypair in ${COSIGN_DIR}/cosign.{key,pub,password}"
+fi
+
+# Export COSIGN_PASSWORD so docker compose forwards it into the Jenkins
+# container, where JCasC interpolates it into the `cosign-password` Secret
+# Text credential at boot. The key + pub files are loaded directly by JCasC
+# via `${readFileBase64:…}` so they don't need to ride in env vars.
+export COSIGN_PASSWORD="$(cat "$COSIGN_DIR/cosign.password")"
+
 # ---- Phase 1: write .env first so docker compose picks up the new mode ----
 
 echo "==> Writing mode flags to .env..."
