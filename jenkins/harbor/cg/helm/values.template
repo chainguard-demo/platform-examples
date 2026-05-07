@@ -1,11 +1,31 @@
+# HTTPS is required for the UI: Harbor 2.12.3+ pulled in gorilla/csrf v1.7.3,
+# which hardcodes the request scheme to "https" inside its origin check, and
+# Harbor's middleware never wraps the request as plaintext. So a browser
+# POST /c/login over HTTP fails with 403 "origin invalid" before the password
+# is ever checked. Upstream bug: goharbor/harbor#22010. Until that ships a
+# fix, we serve the UI over HTTPS with an auto-generated self-signed cert.
+# Browsers show a one-time cert warning; click through to log in.
+#
+# externalURL stays http://localhost so Harbor's registry path (used by
+# `docker push localhost/library/...`) advertises HTTP back to clients. The
+# Docker daemon refuses HTTPS to 127.0.0.0/8 by default, so HTTPS on the
+# registry path would break pipeline pushes. We also disable ssl-redirect
+# so HTTP→HTTPS isn't forced — that lets `docker push` over HTTP coexist
+# with the HTTPS UI on the same ingress.
 externalURL: http://localhost
 expose:
   type: ingress
   tls:
-    enabled: false
+    enabled: true
+    certSource: auto
+    auto:
+      commonName: "localhost"
   ingress:
     hosts:
       core: localhost
+    annotations:
+      ingress.kubernetes.io/ssl-redirect: "false"
+      nginx.ingress.kubernetes.io/ssl-redirect: "false"
 
 imagePullSecrets:
   - name: regcred

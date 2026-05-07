@@ -9,10 +9,13 @@ terraform {
 
 # The Harbor admin password matches the Helm chart default. If you override
 # the chart value `harborAdminPassword`, change this too.
+# `insecure = true` skips TLS verification — the chart issues a self-signed
+# cert (see harbor/cg/helm/values.template for why we can't run HTTP).
 provider "harbor" {
-  url      = "http://localhost"
+  url      = "https://localhost"
   username = "admin"
   password = "Harbor12345"
+  insecure = true
 }
 
 # Register cgr.dev as an upstream registry so we can use it as a proxy cache

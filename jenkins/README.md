@@ -85,7 +85,7 @@ docker compose up -d --build
 | **Mode B** | `localhost/cgr-proxy/<org>` (Harbor proxy cache) | `ttl.sh/<prefix>` (default) | None — anonymous pulls + ttl.sh anonymous pushes |
 | **Mode C** | `localhost/cgr-proxy/<org>` (Harbor proxy cache) | `localhost/library` (Harbor) | Anonymous pulls + Harbor admin creds for push |
 
-Modes B and C stand up Harbor in a local `kind` cluster. They require `kind`, `kubectl`, `helm`, `terraform`, and `envsubst` on the host. See [harbor/README.md](harbor/README.md) for the architecture details.
+Modes B and C stand up Harbor in a local `kind` cluster. They require `kind`, `kubectl`, `helm`, `terraform`, and `envsubst` on the host. The Harbor admin UI lives at <https://localhost/harbor> (self-signed cert — click through the browser warning once). The registry path stays on `http://localhost` so `docker push` works without daemon-trust gymnastics. See [harbor/README.md](harbor/README.md) for the architecture details and a note on why the UI must be HTTPS.
 
 ```sh
 cd jenkins

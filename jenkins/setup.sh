@@ -185,11 +185,11 @@ case "$HARBOR_ENABLED-$PUSH_TO_HARBOR" in
   true-false)
     echo "    Mode: Harbor proxy cache for pulls (anonymous)."
     echo "    Pushes go to $PUSH_REGISTRY."
-    echo "    Harbor UI: http://localhost/harbor (admin / Harbor12345)"
+    echo "    Harbor UI: https://localhost/harbor (admin / Harbor12345; click through cert warning)"
     ;;
   true-true)
     echo "    Mode: Harbor for both pulls and pushes."
     echo "    Pushes land in Harbor's library project."
-    echo "    Harbor UI: http://localhost/harbor (admin / Harbor12345)"
+    echo "    Harbor UI: https://localhost/harbor (admin / Harbor12345; click through cert warning)"
     ;;
 esac

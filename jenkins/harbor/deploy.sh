@@ -72,12 +72,15 @@ helm repo update harbor >/dev/null
 helm upgrade --install harbor harbor/harbor -n harbor -f cg/helm/values.yaml --wait --timeout=10m
 
 echo "==> Waiting for Harbor's web ingress to respond..."
+# -k: the chart-issued cert is self-signed; we just need to know the
+# endpoint is alive, not validate trust. See values.template for why we
+# can't run plain HTTP (Harbor #22010).
 for i in $(seq 1 60); do
-  if curl -fsS -o /dev/null http://localhost/api/v2.0/health 2>/dev/null; then
+  if curl -fsSk -o /dev/null https://localhost/api/v2.0/health 2>/dev/null; then
     break
   fi
   if (( i == 60 )); then
-    echo "ERROR: Harbor /api/v2.0/health did not respond at http://localhost/ within 2 minutes." >&2
+    echo "ERROR: Harbor /api/v2.0/health did not respond at https://localhost/ within 2 minutes." >&2
     exit 1
   fi
   sleep 2
@@ -92,6 +95,6 @@ envsubst < terraform/terraform.templatevars > terraform/terraform.tfvars
 )
 
 echo "==> Done."
-echo "    Harbor UI:       http://localhost/harbor (admin / Harbor12345)"
+echo "    Harbor UI:       https://localhost/harbor (admin / Harbor12345; click through cert warning)"
 echo "    Proxy cache URL: localhost/cgr-proxy/${CHAINGUARD_ORG}/<image>:<tag>"
 echo "    Push project:    localhost/library/<image>:<tag>"
