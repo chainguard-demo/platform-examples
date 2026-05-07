@@ -3,8 +3,10 @@
 #   2. plugins stage: use the -dev jenkins variant (has shell) to run jenkins-plugin-cli
 #   3. final stage: ship on the standard jenkins image with plugins baked in
 
-# Configurable via build-arg from docker-compose; see jenkins/.env.example.
-ARG CHAINGUARD_ORG=smalls.xyz
+# Required build-arg, supplied by docker-compose from .env. No default —
+# CHAINGUARD_ORG must be set explicitly so that we don't accidentally build
+# against the wrong catalog. setup.sh prompts for this on first run.
+ARG CHAINGUARD_ORG
 
 ARG CHAINGUARD_ORG
 FROM cgr.dev/${CHAINGUARD_ORG}/docker-cli:29 AS docker

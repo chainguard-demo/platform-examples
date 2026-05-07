@@ -2,7 +2,7 @@
 # Stage 1: install production deps with pnpm on the dev image. Stage 2 copies
 # the populated node_modules into the slim runtime variant — node:25-slim has
 # only the node binary (no shell, no npm/pnpm).
-ARG CHAINGUARD_ORG=smalls.xyz
+ARG CHAINGUARD_ORG
 
 FROM cgr.dev/${CHAINGUARD_ORG}/node:25-dev AS build
 WORKDIR /app

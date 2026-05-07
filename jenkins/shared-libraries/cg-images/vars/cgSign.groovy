@@ -39,7 +39,8 @@ def call(String image) {
   if (!image?.trim()) {
     error('cgSign: image argument is required')
   }
-  def org = env.CHAINGUARD_ORG ?: 'smalls.xyz'
+  def org = env.CHAINGUARD_ORG
+  if (!org) error('cgSign: env.CHAINGUARD_ORG is empty — JCasC globalNodeProperties should set it from the controller env (jenkins/casc/jenkins.yaml). Re-run setup.sh.')
   withCredentials([
     file(credentialsId: 'cosign-private-key', variable: 'COSIGN_KEY_FILE'),
     string(credentialsId: 'cosign-password',  variable: 'COSIGN_PASSWORD'),

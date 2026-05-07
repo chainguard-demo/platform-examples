@@ -9,7 +9,9 @@ terraform {
 
 provider "chainguard" {}
 
-# Resolve the parent group (the same group that owns the smalls.xyz catalog).
+# Resolve the parent group — the Chainguard org whose catalog this demo
+# pulls from. The name comes in via -var from setup.sh (driven by .env's
+# CHAINGUARD_ORG).
 data "chainguard_group" "parent" {
   name = var.chainguard_group_name
 }

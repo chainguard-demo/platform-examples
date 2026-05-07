@@ -2,13 +2,13 @@
 
 Hello-world Django site on Chainguard's Python 3.12, with `pip` as the package manager. The pipeline's archived artifact is an OCI image pushed to `ttl.sh/smalls-pytest:3-12`.
 
-> Image references below show the default org (`smalls.xyz`); see the demo's top-level [README](../../README.md#configuration) for how to switch.
+> `$CHAINGUARD_ORG` below stands in for your configured Chainguard org — see the top-level [README](../../README.md#configuration) for how that gets set.
 
 ## Pipeline images
 
 | Stage       | Image |
 |-------------|-------|
-| Build deps  | `cgr.dev/smalls.xyz/python:3.12-dev` |
+| Build deps  | `cgr.dev/$CHAINGUARD_ORG/python:3.12-dev` |
 | Image build | host docker daemon (multi-stage build) |
 | Test        | runs the just-built image |
 | Push        | `ttl.sh/smalls-pytest:3-12` |

@@ -2,16 +2,16 @@
 
 Hello-world standalone runnable JAR built with Gradle on Chainguard's OpenJDK 21.
 
-> Image references below show the default org (`smalls.xyz`); see the demo's top-level [README](../../README.md#configuration) for how to switch.
+> `$CHAINGUARD_ORG` below stands in for your configured Chainguard org — see the top-level [README](../../README.md#configuration) for how that gets set.
 
 ## Pipeline images
 
 | Stage | Image |
 |-------|-------|
-| Build | `cgr.dev/smalls.xyz/jdk:openjdk-21-dev` |
-| Test  | `cgr.dev/smalls.xyz/jre:openjdk-21-dev` |
+| Build | `cgr.dev/$CHAINGUARD_ORG/jdk:openjdk-21-dev` |
+| Test  | `cgr.dev/$CHAINGUARD_ORG/jre:openjdk-21-dev` |
 
-The intended runtime / deploy target is `cgr.dev/smalls.xyz/jre:openjdk-21` (shell-less). The `-dev` variant is used in the Test stage only because Jenkins' `docker { image ... }` agent invokes `sh` steps, which require a shell.
+The intended runtime / deploy target is `cgr.dev/$CHAINGUARD_ORG/jre:openjdk-21` (shell-less). The `-dev` variant is used in the Test stage only because Jenkins' `docker { image ... }` agent invokes `sh` steps, which require a shell.
 
 ## Gradle setup
 

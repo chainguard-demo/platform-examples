@@ -23,7 +23,7 @@ Manual `terraform apply` works too (useful for debugging or org changes), but yo
 
 | Name | Default | What it controls |
 |------|---------|------------------|
-| `chainguard_group_name` | `smalls.xyz` | The parent group the identity lives under and the rolebinding's scope. |
+| `chainguard_group_name` | *(required, no default)* | The parent group the identity lives under and the rolebinding's scope. setup.sh passes this via `-var` from `.env`'s `CHAINGUARD_ORG`. |
 | `jenkins_issuer_url` | `http://localhost:8080/oidc` | Must exactly match the `iss` claim Jenkins puts on its tokens. The `oidc-provider` plugin uses `<JENKINS_URL>/oidc` by default. |
 | `jenkins_subject` | `jenkins-cgimages-puller` | Must exactly match the `sub` claim. Configured on the JCasC OIDC credential. |
 

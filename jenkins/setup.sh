@@ -29,7 +29,6 @@ if [[ -f .env ]]; then
   set +a
 fi
 
-ORG="${CHAINGUARD_ORG:-smalls.xyz}"
 JENKINS_URL="${JENKINS_URL:-http://localhost:8080}"
 JENKINS_OIDC_ISSUER="${JENKINS_OIDC_ISSUER:-https://localhost:8080/oidc}"
 
@@ -42,6 +41,18 @@ prompt_yn() {
   [[ "$ans" =~ ^[Yy] ]]
 }
 
+# Prompt for the Chainguard org if .env didn't supply one. The answer gets
+# persisted to .env in Phase 1 below, so subsequent re-runs go straight
+# through without prompting.
+if [[ -z "${CHAINGUARD_ORG:-}" ]]; then
+  echo "==> No Chainguard org configured."
+  echo "    Examples: 'chainguard' (public catalog) or 'your-org.example.com'."
+  while [[ -z "${CHAINGUARD_ORG:-}" ]]; do
+    read -rp "    Enter your Chainguard org: " CHAINGUARD_ORG
+  done
+  echo
+fi
+ORG="$CHAINGUARD_ORG"
 echo "==> Chainguard org: ${ORG}"
 echo
 
@@ -78,6 +89,92 @@ echo "    Harbor enabled: ${HARBOR_ENABLED}"
 echo "    Pulls from:     ${PULL_REGISTRY}"
 echo "    Pushes to:      ${PUSH_REGISTRY}"
 echo
+
+# ---- Phase 0: preflight image accessibility check ------------------------
+# Probe every image the demo will pull from cgr.dev/$ORG/ before spinning
+# anything up. Catches misconfigured org names, missing access grants, and
+# stale chainctl sessions early — with a clear list of what's missing —
+# instead of letting docker build / kubectl apply fail several minutes in
+# with cryptic auth errors. Set SKIP_PREFLIGHT=1 to bypass.
+
+CORE_IMAGES=(
+  # Controller build dependencies (Dockerfile.jenkins multi-stage sources).
+  jenkins:2-lts-jdk21-dev
+  docker-cli:29
+  chainctl:latest-dev
+  # One-shot tools spawned by pipelines or shared-library helpers.
+  cosign:latest-dev
+  crane:latest-dev
+  # cgImage catalog tags. Tags only — manifest probes resolve the
+  # current-tip digest, which is what cgImage's pinned digests track too.
+  maven:3-jdk17-dev
+  amazon-corretto-jre:17-dev
+  maven:3-jdk8-dev
+  adoptium-jre:adoptium-openjdk-8-dev
+  jdk:openjdk-21-dev
+  jre:openjdk-21-dev
+  python:3.14-dev
+  python:3.14
+  python:3.12-dev
+  python:3.12
+  node:22-dev
+  node:22
+  node:25-dev
+  node:25-slim
+)
+
+# Harbor microservice + ingress images, only needed in Modes B/C.
+HARBOR_IMAGES=(
+  harbor-portal:latest
+  harbor-core:latest
+  harbor-jobservice:latest
+  harbor-registry:latest
+  harbor-trivy-adapter:latest
+  harbor-db:latest
+  ingress-nginx-controller:latest
+  kube-webhook-certgen:latest
+)
+
+if [[ "${SKIP_PREFLIGHT:-0}" != "1" ]]; then
+  IMAGES_TO_CHECK=("${CORE_IMAGES[@]}")
+  if [[ "$HARBOR_ENABLED" == "true" ]]; then
+    IMAGES_TO_CHECK+=("${HARBOR_IMAGES[@]}")
+  fi
+
+  echo "==> Preflight: probing ${#IMAGES_TO_CHECK[@]} images at cgr.dev/${ORG}/..."
+  # Parallel HEAD-style probes via `docker manifest inspect`. Each subshell
+  # echoes only the tag of any image that fails — line-atomic on Linux for
+  # short writes, so we can collect results just by reading stdout.
+  MISSING=$(printf '%s\n' "${IMAGES_TO_CHECK[@]}" | xargs -P 8 -I {} sh -c '
+    docker manifest inspect "cgr.dev/'"$ORG"'/{}" >/dev/null 2>&1 || echo "{}"
+  ' || true)
+
+  if [[ -n "$MISSING" ]]; then
+    echo
+    echo "ERROR: The following images are not accessible at cgr.dev/${ORG}/:" >&2
+    while IFS= read -r tag; do
+      printf '         cgr.dev/%s/%s\n' "$ORG" "$tag" >&2
+    done <<< "$MISSING"
+    echo >&2
+    echo "Possible causes:" >&2
+    echo "  - You're not authenticated to cgr.dev. Try:" >&2
+    echo "      chainctl auth login" >&2
+    echo "      chainctl auth configure-docker" >&2
+    echo "  - Your org doesn't have access to these images yet — request" >&2
+    echo "    them at https://console.chainguard.dev/ or via Chainguard support." >&2
+    echo "  - CHAINGUARD_ORG is wrong (currently '${ORG}'). Edit .env or unset" >&2
+    echo "    the variable to be re-prompted." >&2
+    echo >&2
+    echo "Bypass with SKIP_PREFLIGHT=1 ./setup.sh if you know what you're doing." >&2
+    echo "Aborting setup." >&2
+    exit 1
+  fi
+  echo "    All ${#IMAGES_TO_CHECK[@]} images accessible."
+  echo
+else
+  echo "==> Preflight: SKIP_PREFLIGHT=1 set, skipping image accessibility check."
+  echo
+fi
 
 # ---- Phase 1a: ensure cosign keypair exists -----------------------------
 # Pipelines that build OCI images sign their pushed images with cosign and

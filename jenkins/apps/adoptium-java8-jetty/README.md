@@ -2,16 +2,16 @@
 
 Hello-world Jetty/JSP web app, built with Maven on Adoptium JDK 8 and packaged as a self-executing WAR.
 
-> Image references below show the default org (`smalls.xyz`); see the demo's top-level [README](../../README.md#configuration) for how to switch.
+> `$CHAINGUARD_ORG` below stands in for your configured Chainguard org — see the top-level [README](../../README.md#configuration) for how that gets set.
 
 ## Pipeline images
 
 | Stage | Image |
 |-------|-------|
-| Build | `cgr.dev/smalls.xyz/maven:3-jdk8-dev` |
-| Test  | `cgr.dev/smalls.xyz/adoptium-jre:adoptium-openjdk-8-dev` |
+| Build | `cgr.dev/$CHAINGUARD_ORG/maven:3-jdk8-dev` |
+| Test  | `cgr.dev/$CHAINGUARD_ORG/adoptium-jre:adoptium-openjdk-8-dev` |
 
-The intended runtime / deploy target is `cgr.dev/smalls.xyz/adoptium-jre:adoptium-openjdk-8` (shell-less). The `-dev` variant is used in the Test stage only because Jenkins' `docker { image ... }` agent invokes `sh` steps, which require a shell.
+The intended runtime / deploy target is `cgr.dev/$CHAINGUARD_ORG/adoptium-jre:adoptium-openjdk-8` (shell-less). The `-dev` variant is used in the Test stage only because Jenkins' `docker { image ... }` agent invokes `sh` steps, which require a shell.
 
 ## Artifact
 

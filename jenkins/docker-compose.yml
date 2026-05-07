@@ -16,16 +16,18 @@ services:
       context: .
       dockerfile: Dockerfile.jenkins
       args:
-        CHAINGUARD_ORG: ${CHAINGUARD_ORG:-smalls.xyz}
+        # `?` makes compose fail with a clear error if CHAINGUARD_ORG isn't set
+        # in .env. Run setup.sh once to be prompted for it and have it persisted.
+        CHAINGUARD_ORG: ${CHAINGUARD_ORG:?CHAINGUARD_ORG must be set in .env (run ./setup.sh to be prompted)}
     environment:
       # Surface the configured org to pipelines (Jenkinsfiles read env.CHAINGUARD_ORG)
       # and to JCasC (jenkins.yaml interpolates ${CHAINGUARD_ORG}).
-      CHAINGUARD_ORG: ${CHAINGUARD_ORG:-smalls.xyz}
+      CHAINGUARD_ORG: ${CHAINGUARD_ORG:?CHAINGUARD_ORG must be set in .env (run ./setup.sh to be prompted)}
       # Registry routing — set by setup.sh based on the user's mode choice:
       #   PULL_REGISTRY  cgr.dev/<org>  (Mode A)  or  localhost/cgr-proxy/<org> (Modes B/C)
       #   PUSH_REGISTRY  ttl.sh/<prefix> (Modes A/B)  or  localhost/library    (Mode C)
       #   HARBOR_ENABLED true|false      (drives whether the cgLogin OIDC dance runs)
-      PULL_REGISTRY: ${PULL_REGISTRY:-cgr.dev/${CHAINGUARD_ORG:-smalls.xyz}}
+      PULL_REGISTRY: ${PULL_REGISTRY:-cgr.dev/${CHAINGUARD_ORG}}
       PUSH_REGISTRY: ${PUSH_REGISTRY:-ttl.sh/smalls}
       HARBOR_ENABLED: ${HARBOR_ENABLED:-false}
       # Cosign signing-key passphrase. setup.sh exports this from

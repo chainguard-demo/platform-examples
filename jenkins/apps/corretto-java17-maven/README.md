@@ -2,16 +2,16 @@
 
 Hello-world Spring Boot console app, built with Maven on Amazon Corretto JDK 17.
 
-> Image references below show the default org (`smalls.xyz`); see the demo's top-level [README](../../README.md#configuration) for how to switch.
+> `$CHAINGUARD_ORG` below stands in for your configured Chainguard org — see the top-level [README](../../README.md#configuration) for how that gets set.
 
 ## Pipeline images
 
 | Stage | Image |
 |-------|-------|
-| Build | `cgr.dev/smalls.xyz/maven:3-jdk17-dev` |
-| Test  | `cgr.dev/smalls.xyz/amazon-corretto-jre:17-dev` |
+| Build | `cgr.dev/$CHAINGUARD_ORG/maven:3-jdk17-dev` |
+| Test  | `cgr.dev/$CHAINGUARD_ORG/amazon-corretto-jre:17-dev` |
 
-The intended runtime / deploy target is `cgr.dev/smalls.xyz/amazon-corretto-jre:17` (shell-less). The `-dev` variant is used in the Test stage only because Jenkins' `docker { image ... }` agent runs `sh` steps that require a shell.
+The intended runtime / deploy target is `cgr.dev/$CHAINGUARD_ORG/amazon-corretto-jre:17` (shell-less). The `-dev` variant is used in the Test stage only because Jenkins' `docker { image ... }` agent runs `sh` steps that require a shell.
 
 ## Artifact
 
@@ -22,9 +22,9 @@ The Spring Boot fat JAR (`target/app.jar`) is archived to Jenkins. Download it f
 To produce and run the JAR outside Jenkins:
 
 ```sh
-docker run --rm -v "$PWD":/work -w /work cgr.dev/smalls.xyz/maven:3-jdk17-dev \
+docker run --rm -v "$PWD":/work -w /work cgr.dev/$CHAINGUARD_ORG/maven:3-jdk17-dev \
   mvn -B -ntp clean package -DskipTests
 
-docker run --rm -v "$PWD":/work -w /work cgr.dev/smalls.xyz/amazon-corretto-jre:17-dev \
+docker run --rm -v "$PWD":/work -w /work cgr.dev/$CHAINGUARD_ORG/amazon-corretto-jre:17-dev \
   java -jar target/app.jar
 ```

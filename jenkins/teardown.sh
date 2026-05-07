@@ -49,9 +49,14 @@ fi
 
 echo "==> 2/5 Releasing Chainguard assumed identity (if Terraform state present)..."
 if [[ -f iac/terraform.tfstate ]]; then
-  ( cd iac && terraform destroy -auto-approve \
-      -var="chainguard_group_name=${CHAINGUARD_ORG:-smalls.xyz}" \
-      -var="jenkins_issuer_url=${JENKINS_OIDC_ISSUER:-https://localhost:8080/oidc}" || true )
+  if [[ -z "${CHAINGUARD_ORG:-}" ]]; then
+    echo "    SKIPPING: CHAINGUARD_ORG not set in .env, can't run terraform destroy."
+    echo "    The identity will linger; clean it up manually with chainctl iam identities delete."
+  else
+    ( cd iac && terraform destroy -auto-approve \
+        -var="chainguard_group_name=${CHAINGUARD_ORG}" \
+        -var="jenkins_issuer_url=${JENKINS_OIDC_ISSUER:-https://localhost:8080/oidc}" || true )
+  fi
 fi
 
 echo "==> 3/5 Stopping Jenkins (docker compose down)..."

@@ -1,6 +1,6 @@
 In this directory we will implement a simple Jenkins server demo with pipeline jobs to build applications on various languages (and various versions of them) and build tools.
 
-All images should be Chainguard sourced and pulled from the cgr.dev/smalls.xyz repository.
+All images should be Chainguard sourced and pulled from cgr.dev/$CHAINGUARD_ORG (configurable per-deployment; setup.sh prompts and persists to .env).
 
 Setup scripts should be provided to quickly stand up the Jenkins environment for future demonstrations.
 

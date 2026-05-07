@@ -3,7 +3,7 @@
 # ships uv pre-installed). Stage 2 then copies the populated site-packages
 # directory into the shell-less runtime python image — same Python minor
 # version on both sides keeps the packages compatible.
-ARG CHAINGUARD_ORG=smalls.xyz
+ARG CHAINGUARD_ORG
 
 FROM cgr.dev/${CHAINGUARD_ORG}/python:3.14-dev AS build
 USER 0

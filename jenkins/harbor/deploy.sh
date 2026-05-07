@@ -6,7 +6,7 @@
 # of interactive prompts so setup.sh can call it non-interactively.
 #
 # Required env vars:
-#   CHAINGUARD_ORG  Chainguard org to proxy (e.g. smalls.xyz)
+#   CHAINGUARD_ORG  Chainguard org to proxy (e.g. 'chainguard' or 'your-org.example.com')
 #   PULL_USER       Pull-token username (Harbor uses this to talk to cgr.dev)
 #   PULL_PASS       Pull-token password
 #

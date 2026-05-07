@@ -2,7 +2,7 @@
 
 A self-contained Jenkins server running on Chainguard images, with seven pipeline jobs that build and test sample applications across Java, Python, and Node — using Chainguard `*-dev` build images and Chainguard runtime images throughout.
 
-All Jenkins infrastructure and all build/test/runtime images come from `cgr.dev/<your-chainguard-org>` (default `smalls.xyz` — see [Configuration](#configuration)).
+All Jenkins infrastructure and all build/test/runtime images come from `cgr.dev/<your-chainguard-org>`. Pick your org once via [`setup.sh`](setup.sh) (it prompts and persists to `.env`) — see [Configuration](#configuration).
 
 ## Sample applications
 
@@ -60,20 +60,20 @@ chainctl auth status
 
 ## Configuration
 
-The demo defaults to pulling Chainguard images from `cgr.dev/smalls.xyz/`. To use a different org (e.g. the public `chainguard` catalog or your own org):
+The demo pulls Chainguard images from whatever Chainguard org you configure. There is **no built-in default** — `setup.sh` prompts on first run and persists your answer in `.env` for re-runs:
 
 ```sh
-cp .env.example .env
-# edit CHAINGUARD_ORG in .env
-```
-
-`.env` is loaded automatically by `docker-compose`, propagated to the controller container as an env var, and consumed by Jenkinsfiles (via `env.CHAINGUARD_ORG`), the controller Dockerfile, and per-app Dockerfiles (via build ARG). `setup.sh` also sources `.env`, so the pull token is generated against the configured org.
-
-After changing the org, re-run the bootstrap and rebuild — the Chainguard assumed identity is org-scoped, so the existing one becomes invalid for the new org:
-```sh
-docker compose up -d --build
 ./setup.sh
+# ==> No Chainguard org configured.
+#     Examples: 'chainguard' (public catalog) or 'your-org.example.com'.
+#     Enter your Chainguard org: chainguard
 ```
+
+`.env` is loaded automatically by `docker-compose`, propagated to the controller container as an env var, and consumed by Jenkinsfiles (via `env.CHAINGUARD_ORG`), the controller Dockerfile, and per-app Dockerfiles (via build ARG).
+
+To switch orgs, edit `CHAINGUARD_ORG` in `.env` (or unset it to be re-prompted) and re-run `./setup.sh`. The Chainguard assumed identity is org-scoped, so it'll be torn down and recreated against the new org.
+
+Before bringing the stack up, `setup.sh` runs a **preflight image-accessibility probe** against `cgr.dev/<your-org>/` for every image the demo will pull (controller, build/test/runtime, Harbor microservices in Modes B/C, plus cosign/crane/chainctl). If any image isn't accessible, setup aborts with the offending list and a hint about the likely cause (auth, missing access grant, wrong org). Bypass with `SKIP_PREFLIGHT=1 ./setup.sh` if you need to.
 
 ## Quick start
 

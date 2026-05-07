@@ -1,7 +1,6 @@
 variable "chainguard_group_name" {
-  description = "Chainguard parent group name (e.g. smalls.xyz). Must match CHAINGUARD_ORG used by the rest of the demo."
+  description = "Chainguard parent group name (e.g. 'chainguard' or 'your-org.example.com'). Must match CHAINGUARD_ORG used by the rest of the demo. setup.sh always passes this via -var on the command line."
   type        = string
-  default     = "smalls.xyz"
 }
 
 variable "jenkins_issuer_url" {

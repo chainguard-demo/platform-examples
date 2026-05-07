@@ -49,7 +49,7 @@ Five Harbor microservices run in the `harbor` namespace plus ingress-nginx in `i
 The demo's top-level `setup.sh` calls `deploy.sh` automatically when you opt into Harbor mode. To run it by hand:
 
 ```sh
-export CHAINGUARD_ORG=smalls.xyz
+export CHAINGUARD_ORG=your-org-here  # whichever org owns the catalog
 export PULL_USER=...    # chainctl auth pull-token create --parent=$CHAINGUARD_ORG
 export PULL_PASS=...
 ./deploy.sh

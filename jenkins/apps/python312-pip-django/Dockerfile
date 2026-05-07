@@ -4,7 +4,7 @@
 # install. Stage 2 then copies the populated site-packages into the shell-less
 # python:3.12 runtime image — same Python minor version on both sides keeps
 # the packages compatible.
-ARG CHAINGUARD_ORG=smalls.xyz
+ARG CHAINGUARD_ORG
 
 FROM cgr.dev/${CHAINGUARD_ORG}/python:3.12-dev AS build
 USER 0

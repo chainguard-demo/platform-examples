@@ -17,7 +17,11 @@ if [[ -z "${CHAINGUARD_ORG:-}" && -f ../../.env ]]; then
   source ../../.env
   set +a
 fi
-ORG="${CHAINGUARD_ORG:-smalls.xyz}"
+if [[ -z "${CHAINGUARD_ORG:-}" ]]; then
+  echo "ERROR: CHAINGUARD_ORG must be set (in env or in ../../.env)." >&2
+  exit 1
+fi
+ORG="$CHAINGUARD_ORG"
 
 CATALOG=vars/cgImage.groovy
 echo "Refreshing digests in ${CATALOG} against cgr.dev/${ORG}/..."
