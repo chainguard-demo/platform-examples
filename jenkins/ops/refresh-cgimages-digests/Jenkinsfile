@@ -19,6 +19,11 @@ pipeline {
   // Schedule: H H/4 * * *  (every 4 hours, randomized per controller)
 
   stages {
+    stage('Auth') {
+      agent any
+      steps { cgLogin() }
+    }
+
     stage('Refresh digests') {
       agent {
         docker {

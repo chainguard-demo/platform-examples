@@ -12,6 +12,10 @@ def img = cgImage('corretto-java17')
 pipeline {
   agent none
   stages {
+    stage('Auth') {
+      agent any
+      steps { cgLogin() }   // see vars/cgLogin.groovy
+    }
     stage('Build') {
       agent { docker { image img.build; args '--entrypoint=' } }
       ...
@@ -23,6 +27,8 @@ pipeline {
   }
 }
 ```
+
+The `Auth` stage runs `cgLogin` — a sibling shared-library var that exchanges a per-build Jenkins OIDC token for a short-lived Chainguard session and writes a fresh docker config to `$DOCKER_CONFIG`. It must precede any `agent { docker { } }` stage so the docker-workflow plugin picks up the new creds when it pulls the agent image.
 
 The map returned by `cgImage(<token>)` has some subset of these keys:
 
@@ -54,7 +60,7 @@ The `vars/` subdirectory is the standard Jenkins shared-library convention for "
 
 ## Caveats
 
-- **Edits to `cgImage.groovy` apply on the next pipeline run, no Jenkins restart needed.** This is because the retriever is `legacySCM` → `FSSCM` (filesystem_scm plugin) pointed at the bind-mounted source dir. Filesystem-SCM "checks out" the library by copying from the source path at the start of each build, so disk changes propagate immediately. The shared-library version label (`master` in our config) is a placeholder here; for filesystem sources it does not gate caching the way Git refspecs do. If we ever switched the retriever to a real Git source, semantics would change — Jenkins would cache the library by commit and only re-fetch when the version label resolves to a new commit, unless `Fresh clone per build` (the `clone: true` flag on `SCMRetriever`) is set.
+- **Edits to `cgImage.groovy` (or `cgLogin.groovy`) apply on the next pipeline run, no Jenkins restart needed.** This is because the retriever is `legacySCM` → `FSSCM` (filesystem_scm plugin) pointed at the bind-mounted source dir, **with `clone: true`** (forces a fresh checkout per build). Without `clone: true` filesystem_scm caches the workspace and edits don't propagate. The shared-library version label (`master` in our config) is a placeholder here; for filesystem sources it does not gate caching the way Git refspecs do. If we ever switched the retriever to a real Git source, the cache key becomes the commit hash and `clone: true` would be costly — drop it then.
 - **A Groovy syntax error in `cgImage.groovy` fails every pipeline that uses it, immediately, with no graceful fallback.** The library is `implicit: true`, so all pipelines load it whether they call `cgImage(...)` or not. Worth a quick `groovyc` lint or trial run after substantive edits.
 - **All pipelines see the same version of the library at any moment.** To test a change against a single pipeline without affecting the others, flip `implicit` to `false` in JCasC, restart Jenkins, then add an explicit `@Library('cgImages@<branch-or-tag>') _` annotation to the pipeline you want to opt into a different version. (For the filesystem-SCM case, "branch" is just any value — there's no real version control. The annotation is mostly meaningful when the source is Git.)
 - **Digest pins are org-specific.** `cgr.dev/smalls.xyz/maven:3-jdk17-dev` and `cgr.dev/chainguard/maven:3-jdk17-dev` typically resolve to the same content (Chainguard mirrors are byte-identical for shared images), but that's not guaranteed. If you switch `CHAINGUARD_ORG`, re-run `refresh-digests.sh` to verify and re-pin against the new org. A wrong digest fails the pull at build time with a clear error message.

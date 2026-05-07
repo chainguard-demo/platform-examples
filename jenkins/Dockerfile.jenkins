@@ -9,6 +9,11 @@ ARG CHAINGUARD_ORG=smalls.xyz
 ARG CHAINGUARD_ORG
 FROM cgr.dev/${CHAINGUARD_ORG}/docker-cli:29 AS docker
 
+# chainctl binary, used by pipelines (via the cgLogin shared-library var) to
+# exchange Jenkins-issued OIDC tokens for short-lived Chainguard sessions.
+ARG CHAINGUARD_ORG
+FROM cgr.dev/${CHAINGUARD_ORG}/chainctl:latest-dev AS chainctl
+
 ARG CHAINGUARD_ORG
 FROM cgr.dev/${CHAINGUARD_ORG}/jenkins:2-lts-jdk21-dev AS plugins
 USER 0
@@ -19,7 +24,14 @@ ARG CHAINGUARD_ORG
 FROM cgr.dev/${CHAINGUARD_ORG}/jenkins:2-lts-jdk21-dev
 USER 0
 COPY --from=docker /usr/bin/docker /usr/local/bin/docker
+COPY --from=chainctl /usr/bin/chainctl /usr/local/bin/chainctl
 COPY --from=plugins --chown=1000:1000 /usr/share/jenkins/ref/plugins/ /usr/share/jenkins/ref/plugins/
+# `chainctl auth configure-docker` adds a credential helper for cgr.dev to
+# the user's docker config.json — but the helper itself is a symlink in PATH
+# called `docker-credential-cgr` that points back at chainctl. We pre-create
+# it here as root so per-build chainctl runs (uid 1000) don't need write
+# access to /usr/local/bin.
+RUN ln -s /usr/local/bin/chainctl /usr/local/bin/docker-credential-cgr
 USER 1000
 ENV JAVA_OPTS="-Djenkins.install.runSetupWizard=false"
 ENV CASC_JENKINS_CONFIG=/var/jenkins_home/casc

@@ -20,9 +20,29 @@ jenkins:
     loggedInUsersCanDoAnything:
       allowAnonymousRead: false
 
+security:
+  # Configure the Jenkins-as-OIDC-issuer plugin's claim templates. Override
+  # the default subject (which would be ${JOB_URL}) with a fixed string,
+  # because our chainguard_identity uses a `static` block which requires
+  # an exact subject match. The single literal subject means all builds
+  # appear as the same Chainguard identity, but each build still gets a
+  # freshly-signed short-lived JWT.
+  idToken:
+    buildClaimTemplates:
+      - name: sub
+        format: jenkins-cgimages-puller
+        type: "stringClaimType"
+
 unclassified:
   location:
-    url: "http://localhost:8080/"
+    # jenkins.location.url drives the `iss` claim Jenkins puts in OIDC tokens
+    # via the oidc-provider plugin (no per-credential override). The
+    # chainguard_identity static block validator requires HTTPS, so we lie
+    # about the scheme here. The plugin still serves JWKS at the real
+    # http://localhost:8080/oidc/jwks (setup.sh fetches it from there);
+    # Chainguard verifies tokens offline against the uploaded JWKS by
+    # string-comparing the iss claim, so the URL never has to resolve.
+    url: "https://localhost:8080/"
   globalLibraries:
     libraries:
       - name: cgImages
@@ -31,9 +51,33 @@ unclassified:
         defaultVersion: master
         retriever:
           legacySCM:
+            # `clone: true` forces a fresh checkout per build, otherwise
+            # filesystem_scm caches the library workspace and edits may
+            # not propagate to the next build.
+            clone: true
             scm:
               filesystem:
                 path: /tmp/cgjenkins-home/shared-libraries/cg-images
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          # OIDC token issued per-build by Jenkins itself (oidc-provider plugin).
+          # cgLogin in the cgImages shared library pulls this via withCredentials
+          # and exchanges it for a short-lived chainctl session.
+          - idToken:
+              scope: GLOBAL
+              id: jenkins-cgr-oidc
+              description: "Per-build OIDC token for Chainguard assumed-identity exchange"
+              # Chainguard's STS issuer expects this audience. Same value used
+              # by sibling examples like image-copy-gcp/main.go:341.
+              audience: "https://issuer.enforce.dev"
+              # No `issuer:` override here — the plugin then uses
+              # jenkins.location.url (set above to https://localhost:8080/)
+              # AND serves JWKS at http://localhost:8080/oidc/jwks. With a
+              # custom issuer set per-credential, the plugin would refuse
+              # to serve JWKS at all (see plugin source: Keys.java).
 
 jobs:
   - file: /tmp/cgjenkins-home/casc/jobs.groovy

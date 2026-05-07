@@ -69,26 +69,35 @@ cp .env.example .env
 
 `.env` is loaded automatically by `docker-compose`, propagated to the controller container as an env var, and consumed by Jenkinsfiles (via `env.CHAINGUARD_ORG`), the controller Dockerfile, and per-app Dockerfiles (via build ARG). `setup.sh` also sources `.env`, so the pull token is generated against the configured org.
 
-After changing the org, regenerate the pull token and rebuild:
+After changing the org, re-run the bootstrap and rebuild — the Chainguard assumed identity is org-scoped, so the existing one becomes invalid for the new org:
 ```sh
-./setup.sh
 docker compose up -d --build
+./setup.sh
 ```
 
 ## Quick start
 
-**Step 1 — Generate the registry pull token.** [setup.sh](setup.sh) calls `chainctl auth pull-token create` for `$CHAINGUARD_ORG` (or `smalls.xyz` if unset) and writes a Docker config to `.secrets/docker-config.json` (gitignored). Re-run when the token expires (default TTL is 30 days).
+The demo uses **OIDC assumed identity** auth — Jenkins itself signs short-lived JWTs per build, and pipelines exchange them for ~30-min Chainguard sessions via `chainctl auth login`. No long-lived pull tokens on disk.
+
+**Step 1 — Start Jenkins.**
 
 ```sh
 cd jenkins
+docker compose up -d --build
+```
+
+The controller image bakes in `chainctl` (multi-stage-copied from `cgr.dev/$CHAINGUARD_ORG/chainctl`) so pipelines can run it without an extra agent.
+
+**Step 2 — Bootstrap the Chainguard assumed identity.** [setup.sh](setup.sh) waits for Jenkins to come up, fetches its OIDC JWKS, then runs Terraform under [iac/](iac/) to create a `chainguard_identity` (`static` block, JWKS uploaded directly) and a `registry.pull` rolebinding. The identity's UIDP is written to `shared-libraries/cg-images/IDENTITY` (gitignored), which the `cgLogin` shared-library var reads at build time.
+
+```sh
 ./setup.sh
 ```
 
-**Step 2 — Start Jenkins.**
-
-```sh
-docker compose up -d --build
-```
+> **Important:** Re-run `setup.sh` after **any** of these:
+> - First-time bootstrap.
+> - Changing `CHAINGUARD_ORG` in `.env`.
+> - **Any restart of the Jenkins controller** (`docker compose restart jenkins`, `docker compose up -d --force-recreate`, or `down`/`up`). The `oidc-provider` plugin regenerates the credential's RSA signing key on JCasC re-apply, which immediately invalidates the JWKS we previously uploaded to Chainguard. `setup.sh` re-fetches the new JWKS and re-applies Terraform; the identity object is updated in place (its UIDP changes, hence the per-restart re-write of the `IDENTITY` file).
 
 Wait ~30s for Jenkins to finish initial startup (watch with `docker compose logs -f jenkins`), then open <http://localhost:8080> and log in:
 
@@ -97,17 +106,18 @@ Wait ~30s for Jenkins to finish initial startup (watch with `docker compose logs
 
 You should see all seven jobs in the dashboard. Click any of them → **Build Now**. Each pipeline runs roughly the same shape:
 
-1. **Checkout** — `cp -R /sources/apps/<name>/. .` from the bind-mounted source dir into the build workspace.
-2. **Build (deps)** — install/compile in a Chainguard `*-dev` agent container.
-3. **Test** — smoke-test in either the runtime image or its `-dev` variant (see [Common gotchas](#common-gotchas) below).
-4. **Archive / Push** — for the Java pipelines, archive the JAR/WAR to Jenkins. For Python/Node, build a runtime OCI image and push to `ttl.sh`.
+1. **Auth** — `cgLogin()` (a shared-library var) exchanges a fresh per-build Jenkins OIDC token for a short-lived Chainguard session, then writes a docker config that the rest of the build reuses.
+2. **Checkout** — `cp -R /sources/apps/<name>/. .` from the bind-mounted source dir into the build workspace.
+3. **Build (deps)** — install/compile in a Chainguard `*-dev` agent container.
+4. **Test** — smoke-test in either the runtime image or its `-dev` variant (see [Common gotchas](#common-gotchas) below).
+5. **Archive / Push** — for the Java pipelines, archive the JAR/WAR to Jenkins. For Python/Node, build a runtime OCI image and push to `ttl.sh`.
 
 A clean build takes 10s–40s once images are cached locally; the Gradle pipeline is slower on first run (~1m45s) because the Gradle wrapper has to download the Gradle distribution.
 
 ## Adding another sample app
 
 1. Create a directory under [apps/](apps/), e.g. `apps/my-new-app/`.
-2. Add the application source plus a `Jenkinsfile`. Use the same shape as the existing ones — first stage should `cp -R /sources/apps/<name>/. .` and stash, subsequent stages unstash and run. Reference Chainguard images via `cgImage('<token>')` (see [shared-libraries/cg-images](shared-libraries/cg-images/)); add a new token there if needed.
+2. Add the application source plus a `Jenkinsfile`. Use the same shape as the existing ones — first stage should be `Auth` (`steps { cgLogin() }`), then `Checkout` does `cp -R /sources/apps/<name>/. .` and stash, subsequent stages unstash and run. Reference Chainguard images via `cgImage('<token>')` (see [shared-libraries/cg-images](shared-libraries/cg-images/)); add a new token there if needed.
 3. Append one block to the `apps` list in [jenkins/casc/jobs.groovy](jenkins/casc/jobs.groovy).
 4. Restart and reload Jenkins so JCasC re-runs the seed and the new job is loaded:
    ```sh
@@ -129,7 +139,8 @@ These bit me while building out the seven samples — useful to know up front wh
   - **Gradle**: `environment { GRADLE_USER_HOME = "${WORKSPACE}/.gradle" }`
   - **npm / pnpm**: `environment { HOME = "${WORKSPACE}" }`
 - **Chainguard's `python:3.x-dev` runs as uid 65532**, which can't write to the system site-packages. For pipelines that want to `pip install --system` or `uv pip install --system`, pass `args '--user 0 --entrypoint='` in the Jenkinsfile **and** add `USER 0` to the corresponding stage in the Dockerfile.
-- **OCI-image pipelines push to ttl.sh** (anonymous, public, 24h TTL) so no registry auth is needed inside the pipeline. The Jenkins controller's docker config (mounted from `.secrets/docker-config.json`, generated by [setup.sh](setup.sh)) handles `cgr.dev/$CHAINGUARD_ORG` pulls; pushes to `ttl.sh` need no creds.
+- **OCI-image pipelines push to ttl.sh** (anonymous, public, 24h TTL) so no registry auth is needed for pushes. `cgr.dev/$CHAINGUARD_ORG` pulls are authorized by the per-build chainctl session that the `Auth` stage establishes; the resulting docker config lives at `$DOCKER_CONFIG` (in `/tmp/cgjenkins-home/.docker`) and is overwritten by each build.
+- **The Auth stage must precede any `agent { docker { image '...' } }` stage**, because the docker-workflow plugin pulls the agent's image using whatever creds are in `$DOCKER_CONFIG` *at the start of that stage*. The current pipeline shape (`Auth` → `Checkout` → docker-agent stages) gets the ordering right; preserve it when adding new pipelines.
 
 ## Teardown
 

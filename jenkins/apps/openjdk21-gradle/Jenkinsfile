@@ -5,6 +5,11 @@ pipeline {
   options { timestamps() }
 
   stages {
+    stage('Auth') {
+      agent any
+      steps { cgLogin() }
+    }
+
     stage('Checkout') {
       agent any
       steps {

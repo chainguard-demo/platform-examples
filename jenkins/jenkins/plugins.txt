@@ -10,3 +10,8 @@ ws-cleanup
 # instead of a remote Git repo. We use it to source the cg-images library
 # from the bind-mounted ./shared-libraries dir.
 filesystem_scm
+# OIDC Provider — makes Jenkins itself an OpenID Connect issuer so pipelines
+# can mint a short-lived JWT per build. The `withCredentials` step exposes the
+# token as a string credential, which cgLogin then exchanges for a Chainguard
+# chainctl session.
+oidc-provider

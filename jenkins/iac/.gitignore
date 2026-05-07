@@ -1,0 +1,10 @@
+# Terraform local state and provider plugin cache.
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfplan
+
+# JWKS fetched from the running Jenkins controller by setup.sh — regenerated
+# every bootstrap. Not a secret (public keys), but ephemeral.
+jenkins-jwks.json
