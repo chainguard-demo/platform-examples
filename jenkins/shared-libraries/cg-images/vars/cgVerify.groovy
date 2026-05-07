@@ -32,9 +32,14 @@ def call(String image) {
   ]) {
     sh """
       set -eu
-      DIGEST=\$(docker image inspect --format '{{index .RepoDigests 0}}' '${image}')
+      # Pick the RepoDigest whose repo matches the image we want to verify.
+      # See cgSign.groovy for why .RepoDigests can have stale entries from
+      # prior runs.
+      IMAGE='${image}'
+      REPO=\${IMAGE%:*}
+      DIGEST=\$(docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "\$IMAGE" | grep -F "\${REPO}@" | head -1)
       if [ -z "\$DIGEST" ]; then
-        echo "cgVerify: could not resolve digest for ${image} (was it pushed?)." >&2
+        echo "cgVerify: could not resolve digest for \$IMAGE under repo \$REPO (was it pushed?)." >&2
         exit 1
       fi
       # See cgSign.groovy for why we rewrite bare 'localhost' to 'localhost:80'.

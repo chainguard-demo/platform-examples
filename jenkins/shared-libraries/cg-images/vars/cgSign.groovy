@@ -47,9 +47,16 @@ def call(String image) {
   ]) {
     sh """
       set -eu
-      DIGEST=\$(docker image inspect --format '{{index .RepoDigests 0}}' '${image}')
+      # Pick the RepoDigest whose repo matches the image we just pushed.
+      # The local image cache may have stale RepoDigests from prior runs
+      # under different registries (e.g. localhost/library from a Mode C
+      # session, ttl.sh from a Mode A session) — `{{index .RepoDigests 0}}`
+      # returned whichever happened to be first and tripped cosign over.
+      IMAGE='${image}'
+      REPO=\${IMAGE%:*}
+      DIGEST=\$(docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "\$IMAGE" | grep -F "\${REPO}@" | head -1)
       if [ -z "\$DIGEST" ]; then
-        echo "cgSign: could not resolve digest for ${image} (was it pushed?)." >&2
+        echo "cgSign: could not resolve digest for \$IMAGE under repo \$REPO (was it pushed?)." >&2
         exit 1
       fi
       # cosign's reference parser (via go-containerregistry) doesn't accept
