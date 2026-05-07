@@ -143,19 +143,38 @@ if [[ "${SKIP_PREFLIGHT:-0}" != "1" ]]; then
 
   echo "==> Preflight: probing ${#IMAGES_TO_CHECK[@]} images at cgr.dev/${ORG}/..."
   # Parallel HEAD-style probes via `docker manifest inspect`. Each subshell
-  # echoes only the tag of any image that fails — line-atomic on Linux for
-  # short writes, so we can collect results just by reading stdout.
-  MISSING=$(printf '%s\n' "${IMAGES_TO_CHECK[@]}" | xargs -P 8 -I {} sh -c '
-    docker manifest inspect "cgr.dev/'"$ORG"'/{}" >/dev/null 2>&1 || echo "{}"
-  ' || true)
+  # writes one line per image (`OK <tag>` or `FAIL <tag>`) — line-atomic on
+  # Linux for short writes — to a tempfile that we then iterate in INPUT
+  # order so the printed list matches the array above.
+  PREFLIGHT_RESULTS=$(mktemp)
+  trap 'rm -f "$PREFLIGHT_RESULTS"' EXIT
+  printf '%s\n' "${IMAGES_TO_CHECK[@]}" | xargs -P 8 -I {} sh -c '
+    if docker manifest inspect "cgr.dev/'"$ORG"'/{}" >/dev/null 2>&1; then
+      echo "OK {}"
+    else
+      echo "FAIL {}"
+    fi
+  ' >> "$PREFLIGHT_RESULTS" || true
 
-  if [[ -n "$MISSING" ]]; then
-    echo
-    echo "ERROR: The following images are not accessible at cgr.dev/${ORG}/:" >&2
-    while IFS= read -r tag; do
-      printf '         cgr.dev/%s/%s\n' "$ORG" "$tag" >&2
-    done <<< "$MISSING"
+  # ANSI colors. Always emit — setup.sh is interactive.
+  PF_GREEN=$'\033[32m'
+  PF_RED=$'\033[31m'
+  PF_RESET=$'\033[0m'
+  PF_MISSING=0
+  for img in "${IMAGES_TO_CHECK[@]}"; do
+    if grep -qx "OK $img" "$PREFLIGHT_RESULTS"; then
+      printf '    %s✓%s cgr.dev/%s/%s\n' "$PF_GREEN" "$PF_RESET" "$ORG" "$img"
+    else
+      printf '    %s✗%s cgr.dev/%s/%s\n' "$PF_RED"   "$PF_RESET" "$ORG" "$img"
+      PF_MISSING=$((PF_MISSING + 1))
+    fi
+  done
+  rm -f "$PREFLIGHT_RESULTS"
+  trap - EXIT
+
+  if (( PF_MISSING > 0 )); then
     echo >&2
+    echo "ERROR: ${PF_MISSING} image(s) not accessible at cgr.dev/${ORG}/." >&2
     echo "Possible causes:" >&2
     echo "  - You're not authenticated to cgr.dev. Try:" >&2
     echo "      chainctl auth login" >&2
