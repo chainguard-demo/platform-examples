@@ -1,9 +1,22 @@
 // vars/cgLogin.groovy
 //
-// Per-build chainctl login. Exchanges a Jenkins-issued OIDC token for a
-// short-lived (~30 min) Chainguard session, then writes a docker config
-// that the rest of the pipeline (and any spawned `agent docker` agents)
-// can use to pull from cgr.dev.
+// Sets up the controller's docker config so the rest of the pipeline can
+// pull (and optionally push) Chainguard images. Behavior depends on the
+// mode chosen at setup.sh time:
+//
+//   Mode A (HARBOR_ENABLED=false, PUSH_REGISTRY=ttl.sh/...):
+//     Exchanges a per-build Jenkins-issued OIDC token for a short-lived
+//     Chainguard session via `chainctl auth login` + `chainctl auth
+//     configure-docker`. ttl.sh pushes don't need creds.
+//
+//   Mode B (HARBOR_ENABLED=true, PUSH_REGISTRY=ttl.sh/...):
+//     Pulls go through Harbor's anonymous proxy cache project, so no
+//     cgr.dev creds needed. ttl.sh pushes don't need creds either. The
+//     Auth stage is effectively a no-op — we just print a status line.
+//
+//   Mode C (HARBOR_ENABLED=true, PUSH_REGISTRY=localhost/...):
+//     Same as Mode B for pulls. For pushes, write Harbor admin/Harbor12345
+//     into DOCKER_CONFIG/config.json so docker push to localhost/... works.
 //
 // Usage — call from a stage on `agent any` (the controller) BEFORE any
 // stage that uses `agent { docker { image cgImage(...).build } }`:
@@ -12,29 +25,38 @@
 //     agent any
 //     steps { cgLogin() }
 //   }
-//
-// Auto-loaded for every pipeline via the same JCasC globalLibraries
-// config that loads cgImage. No `@Library` annotation needed.
-//
-// Required environment / config (set up by setup.sh + jenkins.yaml):
-//   - env.CHAINGUARD_IDENTITY       UIDP of the assumed identity
-//                                   (set via JCasC globalNodeProperties)
-//   - credential 'jenkins-cgr-oidc' an oidcCredential issued by the
-//                                   oidc-provider plugin, audience cgr.dev
-//   - DOCKER_CONFIG                 path the controller's docker CLI reads
-//                                   (set in docker-compose.yml)
 
 def call() {
-  // Read the identity UIDP from a file rather than env.CHAINGUARD_IDENTITY.
-  // The file is rewritten by setup.sh after each `terraform apply`, and the
-  // shared-libraries dir is bind-mounted live into the controller, so a
-  // Jenkins restart is NOT required to pick up a new identity. (Restarting
-  // Jenkins would also regenerate its OIDC signing key and invalidate the
-  // JWKS we just uploaded — avoiding that is the whole reason this is a
-  // file lookup.)
+  def harborEnabled = (env.HARBOR_ENABLED ?: 'false') == 'true'
+  def pushRegistry  = env.PUSH_REGISTRY ?: ''
+
+  if (harborEnabled) {
+    if (pushRegistry.startsWith('localhost/')) {
+      // Mode C: write Harbor admin creds for push.
+      sh '''
+        set -eu
+        mkdir -p "$DOCKER_CONFIG"
+        AUTH=$(printf 'admin:Harbor12345' | base64)
+        cat > "$DOCKER_CONFIG/config.json" <<EOF
+{
+  "auths": {
+    "localhost": { "auth": "$AUTH" }
+  }
+}
+EOF
+        echo "cgLogin: configured Harbor admin auth for localhost (Mode C)."
+      '''
+    } else {
+      // Mode B: anonymous everywhere, nothing to write.
+      sh 'echo "cgLogin: Harbor mode, anonymous pulls + ttl.sh pushes (Mode B)."'
+    }
+    return
+  }
+
+  // Mode A: OIDC chainctl flow.
   def identity = readFile('/tmp/cgjenkins-home/shared-libraries/cg-images/IDENTITY').trim()
   if (!identity) {
-    error('cgLogin: shared-libraries/cg-images/IDENTITY is empty — run setup.sh first')
+    error('cgLogin: shared-libraries/cg-images/IDENTITY is empty — run setup.sh first (or set HARBOR_ENABLED=true to use the Harbor proxy cache).')
   }
   withCredentials([string(credentialsId: 'jenkins-cgr-oidc', variable: 'OIDC_TOKEN')]) {
     sh """
@@ -44,7 +66,7 @@ def call() {
       # it falls through to the interactive browser flow after writing the
       # credential helper config.
       chainctl auth configure-docker --identity='${identity}' --identity-token=\"\$OIDC_TOKEN\"
-      echo 'cgLogin: authenticated as identity ${identity}'
+      echo 'cgLogin: authenticated as identity ${identity} (Mode A).'
     """
   }
 }

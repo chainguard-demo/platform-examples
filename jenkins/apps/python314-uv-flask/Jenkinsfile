@@ -5,7 +5,10 @@ pipeline {
   options { timestamps() }
 
   environment {
-    IMAGE = 'ttl.sh/smalls-pytest:3-14'
+    // env.PUSH_REGISTRY is set by JCasC globalNodeProperties (driven by setup.sh):
+    // Modes A/B → ttl.sh/<prefix>, Mode C → localhost/library. Slash-separated
+    // works in both — ttl.sh accepts arbitrary paths, Harbor needs project/repo.
+    IMAGE = "${env.PUSH_REGISTRY}/pytest:3-14"
   }
 
   stages {

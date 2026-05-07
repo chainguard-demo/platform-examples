@@ -10,6 +10,15 @@ jenkins:
         env:
           - key: CHAINGUARD_ORG
             value: ${CHAINGUARD_ORG}
+          # Registry routing — set by setup.sh:
+          # cgImage.groovy uses PULL_REGISTRY; OCI-image apps' IMAGE uses PUSH_REGISTRY;
+          # cgLogin.groovy short-circuits when HARBOR_ENABLED is true.
+          - key: PULL_REGISTRY
+            value: ${PULL_REGISTRY:-cgr.dev/${CHAINGUARD_ORG}}
+          - key: PUSH_REGISTRY
+            value: ${PUSH_REGISTRY:-ttl.sh/smalls}
+          - key: HARBOR_ENABLED
+            value: ${HARBOR_ENABLED:-false}
   securityRealm:
     local:
       allowsSignup: false

@@ -5,7 +5,7 @@ pipeline {
   options { timestamps() }
 
   environment {
-    IMAGE = 'ttl.sh/smalls-nodetest:22'
+    IMAGE = "${env.PUSH_REGISTRY}/nodetest:22"
   }
 
   stages {

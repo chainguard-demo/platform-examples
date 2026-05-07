@@ -37,7 +37,10 @@
 // newer image versions.
 
 def call(String token) {
-  def reg = "cgr.dev/${env.CHAINGUARD_ORG}"
+  // PULL_REGISTRY is set by JCasC globalNodeProperties (driven by setup.sh).
+  // Defaults to cgr.dev/<org> for the no-Harbor case; switches to
+  // localhost/cgr-proxy/<org> when Harbor is the active pull-through cache.
+  def reg = env.PULL_REGISTRY ?: "cgr.dev/${env.CHAINGUARD_ORG}"
   def catalog = [
     'corretto-java17': [
       build: 'maven:3-jdk17-dev@sha256:d95ab64eb7ce9b3016cc781c65025727b7287f048655ce2a33ec8b9500b4ba39',

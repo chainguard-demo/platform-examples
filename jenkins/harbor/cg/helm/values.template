@@ -1,0 +1,51 @@
+externalURL: http://localhost
+expose:
+  type: ingress
+  tls:
+    enabled: false
+  ingress:
+    hosts:
+      core: localhost
+
+imagePullSecrets:
+  - name: regcred
+
+portal:
+  image:
+    repository: $REGISTRY_URL/harbor-portal
+    tag: latest
+
+core:
+  image:
+    repository: $REGISTRY_URL/harbor-core
+    tag: latest
+
+  jobservice:
+    image:
+      repository: $REGISTRY_URL/harbor-jobservice
+      tag: latest
+
+registry:
+  registry:
+    image:
+      repository: $REGISTRY_URL/harbor-registry
+      tag: latest
+
+trivy:
+  # enabled the flag to enable Trivy scanner
+  enabled: true
+  image:
+    repository: $REGISTRY_URL/harbor-trivy-adapter
+    tag: latest
+  imagePullSecrets:
+    - name: regcred
+
+
+database:
+  type: internal
+  internal:
+    image:
+      repository: $REGISTRY_URL/harbor-db
+      tag: latest
+
+

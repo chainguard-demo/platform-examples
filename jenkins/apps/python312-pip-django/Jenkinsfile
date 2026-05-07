@@ -5,7 +5,7 @@ pipeline {
   options { timestamps() }
 
   environment {
-    IMAGE = 'ttl.sh/smalls-pytest:3-12'
+    IMAGE = "${env.PUSH_REGISTRY}/pytest:3-12"
   }
 
   stages {

@@ -55,22 +55,8 @@ Create sub-directories for the various sample applications with Jenkins pipeline
   - test with the node:25-slim image
   - Artifact to archive is a new image based on node:25-slim image and pushed to ttl.sh/smalls-nodetest:25
 
-## Future enhancements
-- Decouple the demo from the smalls.xyz hard-coded org, make that configurable
-- Add a harbor image registry option as a pull-through-mirror
-- Use that harbor server as a destination for image pushes instead of ttl.sh
+## Future enhancements (all done)
 
-### Note: relationship between Harbor work and the OIDC assumed-identity implementation
-
-When Harbor lands in front of cgr.dev, the per-build `cgLogin → cgr.dev` flow becomes mostly redundant for *runtime pulls* — Jenkins talks to Harbor, Harbor talks to cgr.dev. The pieces shift like this:
-
-- **Jenkins → Harbor (pulls)**: anonymous if Harbor's proxy-cache project is public; otherwise reuse the OIDC plumbing with audience pointed at Harbor instead of `https://issuer.enforce.dev`.
-- **Harbor → cgr.dev**: a long-lived secret (pull token or Chainguard assumed identity) sits in Harbor's proxy config — the long-lived-secret problem moves from Jenkins to Harbor rather than disappearing.
-- **Jenkins → Harbor (pushes, this enhancement #3)**: needs auth; strongest case for keeping the OIDC infra, retargeted at Harbor.
-- **Bootstrap (controller-image build)**: still needs *some* path to cgr.dev (Harbor isn't running yet at compose-build time). Either keep a one-shot bootstrap pull token or rely on host-side `chainctl auth configure-docker`.
-
-Net effect on the OIDC work:
-- `oidc-provider` plugin + JCasC credential + `cgLogin`-style helper: **reused**, just with a different audience / target.
-- `chainguard_identity` (`static` block) Terraform resource and the `chainctl auth login → cgr.dev` exchange: **gone** for runtime; `iac/` gets repurposed for Harbor-side IAM.
-- `chainctl` baked into the controller: **gone** for runtime use, possibly still useful for one-off ops.
-
+- ~~Decouple the demo from the smalls.xyz hard-coded org, make that configurable~~ — done via `CHAINGUARD_ORG` in `.env`.
+- ~~Add a harbor image registry option as a pull-through-mirror~~ — done in [harbor/](harbor/), opt-in via setup.sh.
+- ~~Use that harbor server as a destination for image pushes instead of ttl.sh~~ — done; setup.sh's third question selects Mode B (pull from Harbor, push to ttl.sh) or Mode C (pull and push both via Harbor).

@@ -77,40 +77,32 @@ docker compose up -d --build
 
 ## Quick start
 
-The demo uses **OIDC assumed identity** auth — Jenkins itself signs short-lived JWTs per build, and pipelines exchange them for ~30-min Chainguard sessions via `chainctl auth login`. No long-lived pull tokens on disk.
+[setup.sh](setup.sh) is interactive and supports **three modes** for image flow. Pick one when prompted:
 
-**Step 1 — Start Jenkins.**
+| | Pull source | Push target | Auth path |
+|-|-------------|-------------|-----------|
+| **Mode A** | `cgr.dev/<org>` directly | `ttl.sh/<prefix>` (default) | OIDC assumed identity (per-build, short-lived) |
+| **Mode B** | `localhost/cgr-proxy/<org>` (Harbor proxy cache) | `ttl.sh/<prefix>` (default) | None — anonymous pulls + ttl.sh anonymous pushes |
+| **Mode C** | `localhost/cgr-proxy/<org>` (Harbor proxy cache) | `localhost/library` (Harbor) | Anonymous pulls + Harbor admin creds for push |
+
+Modes B and C stand up Harbor in a local `kind` cluster. They require `kind`, `kubectl`, `helm`, `terraform`, and `envsubst` on the host. See [harbor/README.md](harbor/README.md) for the architecture details.
 
 ```sh
 cd jenkins
-docker compose up -d --build
-```
-
-The controller image bakes in `chainctl` (multi-stage-copied from `cgr.dev/$CHAINGUARD_ORG/chainctl`) so pipelines can run it without an extra agent.
-
-**Step 2 — Bootstrap the Chainguard assumed identity.** [setup.sh](setup.sh) waits for Jenkins to come up, fetches its OIDC JWKS, then runs Terraform under [iac/](iac/) to create a `chainguard_identity` (`static` block, JWKS uploaded directly) and a `registry.pull` rolebinding. The identity's UIDP is written to `shared-libraries/cg-images/IDENTITY` (gitignored), which the `cgLogin` shared-library var reads at build time.
-
-```sh
 ./setup.sh
 ```
 
-> **Important:** Re-run `setup.sh` after **any** of these:
-> - First-time bootstrap.
-> - Changing `CHAINGUARD_ORG` in `.env`.
-> - **Any restart of the Jenkins controller** (`docker compose restart jenkins`, `docker compose up -d --force-recreate`, or `down`/`up`). The `oidc-provider` plugin regenerates the credential's RSA signing key on JCasC re-apply, which immediately invalidates the JWKS we previously uploaded to Chainguard. `setup.sh` re-fetches the new JWKS and re-applies Terraform; the identity object is updated in place (its UIDP changes, hence the per-restart re-write of the `IDENTITY` file).
+The script asks three questions, lays out the chosen mode in `.env`, builds & starts (or recreates) Jenkins, and either bootstraps the OIDC assumed identity (Mode A) or deploys Harbor (Modes B/C). Re-run any time to switch modes.
 
-Wait ~30s for Jenkins to finish initial startup (watch with `docker compose logs -f jenkins`), then open <http://localhost:8080> and log in:
+> **Mode A caveat:** the `oidc-provider` plugin regenerates its RSA signing key on JCasC re-apply, which invalidates the JWKS uploaded to Chainguard. **Re-run setup.sh after any restart of the Jenkins controller** (`docker compose restart`, `down`/`up`, or `--force-recreate`). Modes B/C aren't affected by this since they don't use OIDC.
 
-- Username: `admin`
-- Password: `admin` (override via `JENKINS_ADMIN_PASSWORD` env in [docker-compose.yml](docker-compose.yml))
+Open <http://localhost:8080> (`admin` / `admin`; override the password via `JENKINS_ADMIN_PASSWORD` in [docker-compose.yml](docker-compose.yml)). You should see all seven sample jobs plus the `refresh-cgimages-digests` ops job. Click any sample → **Build Now**. Each pipeline runs roughly the same shape:
 
-You should see all seven jobs in the dashboard. Click any of them → **Build Now**. Each pipeline runs roughly the same shape:
-
-1. **Auth** — `cgLogin()` (a shared-library var) exchanges a fresh per-build Jenkins OIDC token for a short-lived Chainguard session, then writes a docker config that the rest of the build reuses.
+1. **Auth** — `cgLogin()` (a shared-library var) handles auth for whichever mode is active: Mode A runs the OIDC chainctl exchange; Mode B is a no-op (anonymous pulls); Mode C writes Harbor admin creds for push.
 2. **Checkout** — `cp -R /sources/apps/<name>/. .` from the bind-mounted source dir into the build workspace.
 3. **Build (deps)** — install/compile in a Chainguard `*-dev` agent container.
 4. **Test** — smoke-test in either the runtime image or its `-dev` variant (see [Common gotchas](#common-gotchas) below).
-5. **Archive / Push** — for the Java pipelines, archive the JAR/WAR to Jenkins. For Python/Node, build a runtime OCI image and push to `ttl.sh`.
+5. **Archive / Push** — Java pipelines archive their JAR/WAR to Jenkins. Python/Node pipelines build a runtime OCI image and push it to `$PUSH_REGISTRY` (ttl.sh in Modes A/B, the local Harbor `library` project in Mode C).
 
 A clean build takes 10s–40s once images are cached locally; the Gradle pipeline is slower on first run (~1m45s) because the Gradle wrapper has to download the Gradle distribution.
 
@@ -139,7 +131,7 @@ These bit me while building out the seven samples — useful to know up front wh
   - **Gradle**: `environment { GRADLE_USER_HOME = "${WORKSPACE}/.gradle" }`
   - **npm / pnpm**: `environment { HOME = "${WORKSPACE}" }`
 - **Chainguard's `python:3.x-dev` runs as uid 65532**, which can't write to the system site-packages. For pipelines that want to `pip install --system` or `uv pip install --system`, pass `args '--user 0 --entrypoint='` in the Jenkinsfile **and** add `USER 0` to the corresponding stage in the Dockerfile.
-- **OCI-image pipelines push to ttl.sh** (anonymous, public, 24h TTL) so no registry auth is needed for pushes. `cgr.dev/$CHAINGUARD_ORG` pulls are authorized by the per-build chainctl session that the `Auth` stage establishes; the resulting docker config lives at `$DOCKER_CONFIG` (in `/tmp/cgjenkins-home/.docker`) and is overwritten by each build.
+- **OCI-image pipelines push to whatever `$PUSH_REGISTRY` resolves to**: `ttl.sh/<prefix>` in Modes A/B (anonymous, 24h TTL) or `localhost/library` in Mode C (Harbor admin/Harbor12345 baked in by `cgLogin`). Per-app `IMAGE` envs use `${env.PUSH_REGISTRY}/<app-name>:<tag>` — works for both ttl.sh and Harbor without per-mode pipeline edits.
 - **The Auth stage must precede any `agent { docker { image '...' } }` stage**, because the docker-workflow plugin pulls the agent's image using whatever creds are in `$DOCKER_CONFIG` *at the start of that stage*. The current pipeline shape (`Auth` → `Checkout` → docker-agent stages) gets the ordering right; preserve it when adding new pipelines.
 
 ## Teardown
@@ -147,10 +139,11 @@ These bit me while building out the seven samples — useful to know up front wh
 ```sh
 docker compose down
 sudo rm -rf /tmp/cgjenkins-home   # remove the persisted Jenkins home
-rm -rf .secrets                   # remove the pull-token Docker config
+rm -rf .secrets                   # remove any stale pull-token Docker config
+harbor/teardown.sh                # delete the Harbor kind cluster (no-op if not deployed)
 ```
 
 ## Notes
 
 - The DooD pattern means Jenkins effectively has root-equivalent access to the host machine via the Docker socket. This is acceptable for a local demo but not for production.
-- See [PLAN.md](PLAN.md) for the original sample-app spec and a list of future enhancements (configurable org, Harbor pull-through, push to Harbor instead of ttl.sh).
+- See [PLAN.md](PLAN.md) for the original sample-app spec.

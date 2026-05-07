@@ -1,0 +1,4 @@
+# terraform.tfvars
+chainguard_organization_name = "$ORG_NAME"
+chainguard_username          = "$PULL_USER"
+chainguard_pull_token        = "$PULL_PASS"
