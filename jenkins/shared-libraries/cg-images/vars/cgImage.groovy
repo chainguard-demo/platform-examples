@@ -43,32 +43,32 @@ def call(String token) {
   def reg = env.PULL_REGISTRY ?: "cgr.dev/${env.CHAINGUARD_ORG}"
   def catalog = [
     'corretto-java17': [
-      build: 'maven:3-jdk17-dev@sha256:d95ab64eb7ce9b3016cc781c65025727b7287f048655ce2a33ec8b9500b4ba39',
-      test:  'amazon-corretto-jre:17-dev@sha256:d00bd8b357f0481d9c9c2778d69b74312f01d582b04df1e296a76ee74714e8be',
+      build: 'maven:3-jdk17-dev@sha256:90e0bf8239086e814fc92090749f4f3b7b49a88107c655b0661509a2a4f2ee58',
+      test:  'amazon-corretto-jre:17-dev@sha256:46883ffbb2b5e99cf52cb124d9fced7b4e3740cacd46c1913bc2e970b7613353',
     ],
     'adoptium-java8': [
-      build: 'maven:3-jdk8-dev@sha256:cad0490a5f41c922e884d3cc11a810234b8661fe8b2becbcdc6a2d92e2708a9e',
-      test:  'adoptium-jre:adoptium-openjdk-8-dev@sha256:f745cc893a988fd4065b21b318473315c6fab61607bc89d8fd656633d75fcd6d',
+      build: 'maven:3-jdk8-dev@sha256:9df83d553cef9c7bc3daabd51fcf993478516339c525eca0307f780f2ed3743a',
+      test:  'adoptium-jre:adoptium-openjdk-8-dev@sha256:b06752d6781be20ef0ca4bc50459ef1c7518acec79122e4583ee9a24f6ed396a',
     ],
     'openjdk21': [
-      build: 'jdk:openjdk-21-dev@sha256:8fccfbd701fe79dc6c53bba92b7d4e3387bd6b140cd69fccbc74109da59a470c',
-      test:  'jre:openjdk-21-dev@sha256:5c7d9d0287cf9bd4c4d3df39f532a028a0f019d96b60a12862c2dc29d9c740fb',
+      build: 'jdk:openjdk-21-dev@sha256:22a0cda00ee2980c4e1c7c35f7ddfa4391e06a2a8806887bffb5e5283f149ee1',
+      test:  'jre:openjdk-21-dev@sha256:c5bc29d25e88d244e7caaa344285007da619cd0bf83c350989398e1553775ecf',
     ],
     'python-3.14': [
-      build:   'python:3.14-dev@sha256:9eba3fde174d8eab51be61c3440f06c529449e1bf2e05edf17cab02feb03a0fb',
-      runtime: 'python:3.14@sha256:ecb71c9df61b0cf7b94133e41e2c152a8a08fdc1e200891f52c1916642e93e49',
+      build:   'python:3.14-dev@sha256:aa69dcd8a8689f7584fd4e077a52c0f13812ec7f54ace6590ab31f4297b3129d',
+      runtime: 'python:3.14@sha256:0d0af6d76f7caf6b0d21015b66089bef7f017d062652a3b297f211d07e319ec4',
     ],
     'python-3.12': [
-      build:   'python:3.12-dev@sha256:a17a4c58449b7cf93325ab18d75c9cb180bd8a82cfb6adb24d93c64a5c645ed7',
-      runtime: 'python:3.12@sha256:010f22ee9a4eeb2d1be561f235659c84544f4f04fb39234bf408d389f4d3d212',
+      build:   'python:3.12-dev@sha256:6f0af8cc50dd3853ce3fb145874e2408c868ba50e7104691a43794efda509e57',
+      runtime: 'python:3.12@sha256:c989e9a79d89581d777a9249444ebf7a9a64835188fe958d18ee3f19a98d25e1',
     ],
     'node-22': [
-      build:   'node:22-dev@sha256:4bc74862aec7fcfcf518e8606dbc0d7cdc294a1a062c6323a42bda40dd443969',
-      runtime: 'node:22@sha256:2ac85f61d02a044683bf5904183d2215acf167773c4fdf091ff657f4acfc84be',
+      build:   'node:22-dev@sha256:dd916e3ed5be3b662cb598ad02a9e8b31a5ab23964ac92db4f79378ffa9fccca',
+      runtime: 'node:22@sha256:63323818cad51c97855be7c45a5ff8933983658b0b88051f7800368bcf5b938c',
     ],
     'node-25': [
-      build:   'node:25-dev@sha256:42011912b30c4ed6320a7c48cbec1571886ab57915f54cd6ed616958ae5d9857',
-      runtime: 'node:25-slim@sha256:affd11bfb77c0d4cd5e87d0ab7b922f2833293d5c8e24e687323d14eb19136c6',
+      build:   'node:25-dev@sha256:cea252f9844fcaf7a224f009201e202e956d316976fe95df3c3c51d78ba10187',
+      runtime: 'node:25-slim@sha256:c1c2a3206d54ce0d1e04f108de77429325fd50b3ad266f7fbf827536ffed0292',
     ],
   ]
   if (!catalog.containsKey(token)) {
