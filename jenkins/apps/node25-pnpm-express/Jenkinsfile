@@ -17,8 +17,16 @@ pipeline {
     stage('Checkout') {
       agent any
       steps {
+        // Wipe the workspace before copying sources. Jenkins reuses the
+        // workspace across builds, and pnpm's node_modules/.pnpm/ tree is
+        // built out of symlinks the next `unstash` step refuses to extract
+        // (Jenkins anti-symlink-traversal check). Clearing first means
+        // stash always sees just the source files.
+        cleanWs()
         sh 'cp -R /sources/apps/node25-pnpm-express/. .'
-        stash name: 'src', includes: '**'
+        // excludes: belt-and-braces against the same symlink trap if Build
+        // deps somehow runs before another stash/unstash cycle.
+        stash name: 'src', includes: '**', excludes: 'node_modules/**'
       }
     }
 

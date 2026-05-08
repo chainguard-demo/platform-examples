@@ -17,8 +17,14 @@ pipeline {
     stage('Checkout') {
       agent any
       steps {
+        // See node25-pnpm-express/Jenkinsfile for why we clean + exclude.
+        // npm's node_modules layout doesn't use symlinks the way pnpm does,
+        // so this is mostly defensive — keeps the stash small and avoids
+        // the same class of failure if a future dependency switch reaches
+        // for symlinks.
+        cleanWs()
         sh 'cp -R /sources/apps/node22-npm-express/. .'
-        stash name: 'src', includes: '**'
+        stash name: 'src', includes: '**', excludes: 'node_modules/**'
       }
     }
 
