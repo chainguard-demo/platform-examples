@@ -22,6 +22,12 @@
 // wrote earlier in the pipeline (Harbor admin creds in Mode C; nothing
 // needed in A/B since signatures push anonymously to ttl.sh).
 //
+// The cosign helper image itself is pulled from $PULL_REGISTRY (not
+// cgr.dev directly) — that's cgr.dev/<org> in Mode A but the anonymous
+// Harbor proxy at localhost/cgr-proxy/<org> in Modes B/C, where the
+// controller has no cgr.dev creds. Same routing as cgImage() uses for
+// the application build/test agents.
+//
 // Usage from a stage on `agent any`:
 //
 //   stage('Sign') {
@@ -43,7 +49,8 @@ def call(String image) {
   // Pass `image` through the sh step's environment rather than interpolating
   // it into the script body — otherwise an image ref containing a single
   // quote (or other shell metacharacter) could break out of the surrounding
-  // quoting. CHAINGUARD_ORG is already exposed to the shell by Jenkins.
+  // quoting. CHAINGUARD_ORG and PULL_REGISTRY are already exposed to the
+  // shell by Jenkins.
   withEnv(["IMAGE=${image}"]) {
     withCredentials([
       file(credentialsId: 'cosign-private-key', variable: 'COSIGN_KEY_FILE'),
@@ -71,13 +78,14 @@ def call(String image) {
         case "$DIGEST" in
           localhost/*) DIGEST="localhost:80/${DIGEST#localhost/}" ;;
         esac
+        COSIGN_IMAGE="${PULL_REGISTRY:-cgr.dev/${CHAINGUARD_ORG}}/cosign:latest-dev"
         docker run --rm --network host \
           -v "$COSIGN_KEY_FILE:/cosign.key:ro" \
           -v "$DOCKER_CONFIG:/jenkins-docker:ro" \
           -e "COSIGN_PASSWORD=$COSIGN_PASSWORD" \
           -e DOCKER_CONFIG=/jenkins-docker \
           --entrypoint=/usr/bin/cosign \
-          "cgr.dev/${CHAINGUARD_ORG}/cosign:latest-dev" \
+          "$COSIGN_IMAGE" \
           sign --yes --allow-http-registry --key /cosign.key "$DIGEST"
         echo "cgSign: signed $DIGEST"
       '''

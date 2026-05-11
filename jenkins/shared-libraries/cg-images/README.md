@@ -48,7 +48,7 @@ To refresh the digests (e.g. to pick up a security patch in the underlying image
 ./refresh-digests.sh
 ```
 
-The script reads the current `repo:tag` portion of each pinned reference, calls `crane digest cgr.dev/$CHAINGUARD_ORG/<repo>:<tag>` for each, and rewrites the digest in place. Requires `crane`. It picks up `CHAINGUARD_ORG` from `../../.env` so refreshing matches the org the demo is configured for.
+The script reads the current `repo:tag` portion of each pinned reference, calls `crane digest $PULL_REGISTRY/<repo>:<tag>` for each, and rewrites the digest in place. Requires `crane`. It picks up `CHAINGUARD_ORG` (and, optionally, `PULL_REGISTRY`) from `../../.env` — so refreshing matches the org and pull routing the demo is configured for: `cgr.dev/<org>` directly in Mode A, or the anonymous `localhost/cgr-proxy/<org>` Harbor cache in Modes B/C.
 
 ## Adding a new token
 

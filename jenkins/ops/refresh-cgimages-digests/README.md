@@ -6,11 +6,14 @@ Scheduled Jenkins job that re-resolves every digest in the [cgImages shared-libr
 
 | Stage | Image | Purpose |
 |-------|-------|---------|
-| Refresh digests | `cgr.dev/${CHAINGUARD_ORG}/crane:latest-dev` | Runs [refresh-digests.sh](../../shared-libraries/cg-images/refresh-digests.sh) which calls `crane digest` for each entry. |
+| Auth            | (controller)                         | Runs `cgLogin()` — in Mode A this exchanges a Jenkins OIDC token for a chainctl session and writes a fresh docker config to `$DOCKER_CONFIG`; in Modes B/C (Harbor) it's a no-op because pulls go anonymously through the Harbor proxy. |
+| Refresh digests | `${PULL_REGISTRY}/crane:latest-dev`  | Runs [refresh-digests.sh](../../shared-libraries/cg-images/refresh-digests.sh) which calls `crane digest` for each entry. |
 
-The agent container gets:
-- `DOCKER_CONFIG=/dockerconfig` pointed at the bind-mounted pull-token config (so `crane` can authenticate to `cgr.dev`)
-- `/tmp/cgjenkins-home/shared-libraries` mounted **read-write** at `/sources` so the script can rewrite `vars/cgImage.groovy`
+The agent container inherits the controller's mounts (Jenkins docker-workflow `--volumes-from`), so:
+- `DOCKER_CONFIG=/tmp/cgjenkins-home/.docker` points at the controller's docker config — populated by `cgLogin()` in Mode A so `crane` can authenticate to `cgr.dev`; unused in Modes B/C where the Harbor proxy serves manifests anonymously.
+- `/tmp/cgjenkins-home/shared-libraries` is bind-mounted **read-write** so the script can rewrite `vars/cgImage.groovy` in place.
+
+The crane image itself is pulled via `PULL_REGISTRY` (not `cgr.dev` directly), matching how `cgImage()` routes application build/test agents — so this job works in Harbor modes even though the controller has no cgr.dev creds.
 
 When digests change, the next sample-app pipeline picks them up automatically — the cgImages library is live-loaded from the same bind-mounted dir on every build. No Jenkins restart needed.
 

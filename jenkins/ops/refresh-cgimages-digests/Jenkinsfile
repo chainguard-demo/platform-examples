@@ -27,7 +27,11 @@ pipeline {
     stage('Refresh digests') {
       agent {
         docker {
-          image "cgr.dev/${env.CHAINGUARD_ORG}/crane:latest-dev"
+          // Pull crane via PULL_REGISTRY (cgr.dev/<org> in Mode A,
+          // localhost/cgr-proxy/<org> in Modes B/C where the controller
+          // has no cgr.dev creds — same routing as cgImage() applies to
+          // the application build/test agents).
+          image "${env.PULL_REGISTRY ?: "cgr.dev/${env.CHAINGUARD_ORG}"}/crane:latest-dev"
           // The agent inherits the controller's mounts via `--volumes-from`
           // (Jenkins docker-workflow plugin default), so the shared-libraries
           // tree (rw) and the pull-token docker config are already visible at

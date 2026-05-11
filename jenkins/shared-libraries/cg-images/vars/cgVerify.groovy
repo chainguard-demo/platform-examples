@@ -8,7 +8,10 @@
 // the full sign-then-verify loop.
 //
 // Cosign runs in a one-shot container with --network host for the same
-// reason cgSign does — see that file for the full rationale.
+// reason cgSign does — see that file for the full rationale. The cosign
+// helper image itself is pulled from $PULL_REGISTRY so it works whether
+// the controller has cgr.dev creds (Mode A) or only the anonymous Harbor
+// proxy (Modes B/C).
 //
 // Usage from a stage on `agent any`:
 //
@@ -47,12 +50,13 @@ def call(String image) {
         case "$DIGEST" in
           localhost/*) DIGEST="localhost:80/${DIGEST#localhost/}" ;;
         esac
+        COSIGN_IMAGE="${PULL_REGISTRY:-cgr.dev/${CHAINGUARD_ORG}}/cosign:latest-dev"
         docker run --rm --network host \
           -v "$COSIGN_PUB_FILE:/cosign.pub:ro" \
           -v "$DOCKER_CONFIG:/jenkins-docker:ro" \
           -e DOCKER_CONFIG=/jenkins-docker \
           --entrypoint=/usr/bin/cosign \
-          "cgr.dev/${CHAINGUARD_ORG}/cosign:latest-dev" \
+          "$COSIGN_IMAGE" \
           verify --allow-http-registry --key /cosign.pub "$DIGEST" >/dev/null
         echo "cgVerify: signature OK for $DIGEST"
       '''
