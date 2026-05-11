@@ -39,44 +39,48 @@ def call(String image) {
   if (!image?.trim()) {
     error('cgSign: image argument is required')
   }
-  def org = env.CHAINGUARD_ORG
-  if (!org) error('cgSign: env.CHAINGUARD_ORG is empty — JCasC globalNodeProperties should set it from the controller env (jenkins/casc/jenkins.yaml). Re-run setup.sh.')
-  withCredentials([
-    file(credentialsId: 'cosign-private-key', variable: 'COSIGN_KEY_FILE'),
-    string(credentialsId: 'cosign-password',  variable: 'COSIGN_PASSWORD'),
-  ]) {
-    sh """
-      set -eu
-      # Pick the RepoDigest whose repo matches the image we just pushed.
-      # The local image cache may have stale RepoDigests from prior runs
-      # under different registries (e.g. localhost/library from a Mode C
-      # session, ttl.sh from a Mode A session) — `{{index .RepoDigests 0}}`
-      # returned whichever happened to be first and tripped cosign over.
-      IMAGE='${image}'
-      REPO=\${IMAGE%:*}
-      DIGEST=\$(docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "\$IMAGE" | grep -F "\${REPO}@" | head -1)
-      if [ -z "\$DIGEST" ]; then
-        echo "cgSign: could not resolve digest for \$IMAGE under repo \$REPO (was it pushed?)." >&2
-        exit 1
-      fi
-      # cosign's reference parser (via go-containerregistry) doesn't accept
-      # bare 'localhost' as a registry hostname — it falls back to treating
-      # the whole ref as a Docker Hub path (index.docker.io/localhost/...).
-      # Adding ':80' forces the host:port split, so the parser recognizes
-      # localhost:80 as the registry. Other hostnames (ttl.sh, harbor.foo.bar)
-      # contain a '.' and parse correctly without modification.
-      case "\$DIGEST" in
-        localhost/*) DIGEST="localhost:80/\${DIGEST#localhost/}" ;;
-      esac
-      docker run --rm --network host \\
-        -v "\$COSIGN_KEY_FILE:/cosign.key:ro" \\
-        -v "\$DOCKER_CONFIG:/jenkins-docker:ro" \\
-        -e "COSIGN_PASSWORD=\$COSIGN_PASSWORD" \\
-        -e DOCKER_CONFIG=/jenkins-docker \\
-        --entrypoint=/usr/bin/cosign \\
-        cgr.dev/${org}/cosign:latest-dev \\
-        sign --yes --allow-http-registry --key /cosign.key "\$DIGEST"
-      echo "cgSign: signed \$DIGEST"
-    """
+  if (!env.CHAINGUARD_ORG) error('cgSign: env.CHAINGUARD_ORG is empty — JCasC globalNodeProperties should set it from the controller env (jenkins/casc/jenkins.yaml). Re-run setup.sh.')
+  // Pass `image` through the sh step's environment rather than interpolating
+  // it into the script body — otherwise an image ref containing a single
+  // quote (or other shell metacharacter) could break out of the surrounding
+  // quoting. CHAINGUARD_ORG is already exposed to the shell by Jenkins.
+  withEnv(["IMAGE=${image}"]) {
+    withCredentials([
+      file(credentialsId: 'cosign-private-key', variable: 'COSIGN_KEY_FILE'),
+      string(credentialsId: 'cosign-password',  variable: 'COSIGN_PASSWORD'),
+    ]) {
+      sh '''
+        set -eu
+        # Pick the RepoDigest whose repo matches the image we just pushed.
+        # The local image cache may have stale RepoDigests from prior runs
+        # under different registries (e.g. localhost/library from a Mode C
+        # session, ttl.sh from a Mode A session) — `{{index .RepoDigests 0}}`
+        # returned whichever happened to be first and tripped cosign over.
+        REPO="${IMAGE%:*}"
+        DIGEST=$(docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$IMAGE" | grep -F "${REPO}@" | head -1)
+        if [ -z "$DIGEST" ]; then
+          echo "cgSign: could not resolve digest for $IMAGE under repo $REPO (was it pushed?)." >&2
+          exit 1
+        fi
+        # cosign's reference parser (via go-containerregistry) doesn't accept
+        # bare 'localhost' as a registry hostname — it falls back to treating
+        # the whole ref as a Docker Hub path (index.docker.io/localhost/...).
+        # Adding ':80' forces the host:port split, so the parser recognizes
+        # localhost:80 as the registry. Other hostnames (ttl.sh, harbor.foo.bar)
+        # contain a '.' and parse correctly without modification.
+        case "$DIGEST" in
+          localhost/*) DIGEST="localhost:80/${DIGEST#localhost/}" ;;
+        esac
+        docker run --rm --network host \
+          -v "$COSIGN_KEY_FILE:/cosign.key:ro" \
+          -v "$DOCKER_CONFIG:/jenkins-docker:ro" \
+          -e "COSIGN_PASSWORD=$COSIGN_PASSWORD" \
+          -e DOCKER_CONFIG=/jenkins-docker \
+          --entrypoint=/usr/bin/cosign \
+          "cgr.dev/${CHAINGUARD_ORG}/cosign:latest-dev" \
+          sign --yes --allow-http-registry --key /cosign.key "$DIGEST"
+        echo "cgSign: signed $DIGEST"
+      '''
+    }
   }
 }
