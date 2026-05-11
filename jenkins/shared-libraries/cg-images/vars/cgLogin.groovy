@@ -58,8 +58,11 @@ EOF
         echo "cgLogin: configured Harbor admin auth for localhost / localhost:80 (Mode C)."
       '''
     } else {
-      // Mode B: anonymous everywhere, nothing to write.
-      sh 'echo "cgLogin: Harbor mode, anonymous pulls + ttl.sh pushes (Mode B)."'
+      // Mode B: anonymous everywhere, nothing to write. PUSH_REGISTRY is
+      // typically ttl.sh/<prefix> but setup.sh accepts any non-localhost
+      // value, so log the actual target rather than hardcoding ttl.sh.
+      def pushDisplay = pushRegistry ?: '(unset)'
+      sh "echo 'cgLogin: Harbor mode, anonymous pulls + pushes to ${pushDisplay} (Mode B).'"
     }
     return
   }

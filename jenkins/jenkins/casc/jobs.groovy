@@ -4,7 +4,8 @@
 // The Jenkinsfile body is inlined into the job at seed time so we don't need an SCM.
 // Each pipeline's first stage copies the app sources from /sources into the workspace
 // (these come from the bind-mounted ./apps directory, available on both the controller
-// and the DinD daemon at the same path).
+// and the host Docker daemon at the same path — this demo uses DooD, not DinD; see
+// docker-compose.yml for the architecture rationale).
 
 def apps = [
   [
