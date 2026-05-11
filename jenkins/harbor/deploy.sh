@@ -62,8 +62,7 @@ done
 echo "==> Deploying ingress-nginx..."
 kubectl apply -f cg/manifests/deploy-ingress-nginx.yaml
 kubectl wait --for=condition=Ready -n ingress-nginx pod \
-  --selector=app.kubernetes.io/name=ingress-nginx \
-  --selector=app.kubernetes.io/component=controller \
+  --selector=app.kubernetes.io/name=ingress-nginx,app.kubernetes.io/component=controller \
   --timeout=3m
 
 echo "==> Installing/upgrading Harbor via Helm..."

@@ -10,9 +10,9 @@ variable "jenkins_issuer_url" {
 }
 
 variable "identity_expiration" {
-  description = "RFC3339 timestamp at which the assumed identity stops accepting tokens. Must be in the future. Defaults to one year from a fixed-but-recent baseline; bump or rotate by running setup.sh again."
+  description = "RFC3339 timestamp at which the assumed identity stops accepting tokens. Must be in the future (Chainguard provider validates this at plan time). Default is set well into the future so demo-runners don't have to bump it; rotate sooner by overriding this variable. We deliberately keep a fixed default rather than computing `timeadd(timestamp(), ...)` because `timestamp()` is recomputed on every plan and would force a churned apply every time."
   type        = string
-  default     = "2027-05-07T00:00:00Z"
+  default     = "2030-01-01T00:00:00Z"
 }
 
 variable "jenkins_subject" {

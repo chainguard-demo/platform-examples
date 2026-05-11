@@ -43,31 +43,29 @@ CATALOG=vars/cgImage.groovy
 echo "Refreshing digests in ${CATALOG} against ${REGISTRY}/..."
 
 # Extract every single-quoted "<repo>:<tag>" or "<repo>:<tag>@sha256:..." entry
-# from the catalog. We deduplicate by the repo:tag portion (everything before
-# the optional @ digest) so multiple stale-digest entries collapse to one
-# crane call.
-mapfile -t pairs < <(
-  grep -oE "'[a-z][a-z0-9_.-]*:[a-zA-Z0-9._-]+(@sha256:[0-9a-f]{64})?'" "$CATALOG" \
-    | tr -d "'" \
-    | sort -u
-)
+# from the catalog, strip the digest suffix so multiple stale-digest entries
+# collapse to one crane call, and dedupe with `sort -u`. We avoid bash-4
+# constructs (`mapfile`, `declare -A`) so this script also works on macOS's
+# default /bin/bash 3.2.
+reftags_file=$(mktemp)
+trap 'rm -f "$reftags_file"' EXIT
 
-if (( ${#pairs[@]} == 0 )); then
+grep -oE "'[a-z][a-z0-9_.-]*:[a-zA-Z0-9._-]+(@sha256:[0-9a-f]{64})?'" "$CATALOG" \
+  | tr -d "'" \
+  | sed -E 's/@sha256:[0-9a-f]{64}$//' \
+  | sort -u \
+  > "$reftags_file"
+
+if [[ ! -s "$reftags_file" ]]; then
   echo "No image references found in ${CATALOG}." >&2
   exit 1
 fi
 
-# Build the unique set of repo:tag values to query.
-declare -A reftags
-for entry in "${pairs[@]}"; do
-  reftag="${entry%@*}"
-  reftags["$reftag"]=1
-done
-
 tmp=$(mktemp)
+trap 'rm -f "$reftags_file" "$tmp"' EXIT
 cp "$CATALOG" "$tmp"
 
-for reftag in "${!reftags[@]}"; do
+while IFS= read -r reftag; do
   printf '  %-50s ' "$reftag"
   digest=$(crane digest "${REGISTRY}/${reftag}")
   echo "$digest"
@@ -79,9 +77,11 @@ for reftag in "${!reftags[@]}"; do
   # replacement, eating the @ sign.
   sed -i.bak -E "s|'${reftag}(@sha256:[0-9a-f]{64})?'|'${pinned}'|g" "$tmp"
   rm -f "${tmp}.bak"
-done
+done < "$reftags_file"
 
 mv "$tmp" "$CATALOG"
+rm -f "$reftags_file"
+trap - EXIT
 echo
 # Show a diff if git is available and we're inside a checkout (e.g. running
 # from a developer's laptop); silently skip otherwise (e.g. inside the crane

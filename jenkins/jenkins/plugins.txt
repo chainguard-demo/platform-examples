@@ -1,3 +1,9 @@
+# Plugins are deliberately unpinned: this is a demo image rebuilt on demand
+# (docker compose build), and we want each rebuild to pick up the current
+# Jenkins-recommended plugin versions. For a production controller you'd
+# pin each line as `plugin:version` (or generate a lockfile via
+# `jenkins-plugin-cli --list-plugins --output txt --available-updates=false`)
+# and bump them through a controlled review process.
 configuration-as-code
 job-dsl
 workflow-aggregator
