@@ -45,7 +45,7 @@ def call(String image) {
   if (!image?.trim()) {
     error('cgSign: image argument is required')
   }
-  if (!env.CHAINGUARD_ORG) error('cgSign: env.CHAINGUARD_ORG is empty — JCasC globalNodeProperties should set it from the controller env (jenkins/casc/jenkins.yaml). Re-run setup.sh.')
+  if (!env.CHAINGUARD_ORG) error('cgSign: env.CHAINGUARD_ORG is empty — JCasC globalNodeProperties should set it from the controller env (see ./jenkins/casc/jenkins.yaml under the jenkins/ subdir). Re-run setup.sh.')
   // Pass `image` through the sh step's environment rather than interpolating
   // it into the script body — otherwise an image ref containing a single
   // quote (or other shell metacharacter) could break out of the surrounding

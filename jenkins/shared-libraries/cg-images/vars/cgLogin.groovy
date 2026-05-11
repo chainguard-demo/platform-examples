@@ -41,7 +41,12 @@ def call() {
       sh '''
         set -eu
         mkdir -p "$DOCKER_CONFIG"
-        AUTH=$(printf 'admin:Harbor12345' | base64)
+        # Pipe through `tr -d '\n'` so the base64 output is a single line
+        # even when GNU coreutils wraps at 76 chars (or appends a trailing
+        # newline that survives an internal wrap). $(...) already trims the
+        # final trailing newline but not internal ones, so this is a
+        # defensive guard for any future longer auth string.
+        AUTH=$(printf 'admin:Harbor12345' | base64 | tr -d '\n')
         cat > "$DOCKER_CONFIG/config.json" <<EOF
 {
   "auths": {

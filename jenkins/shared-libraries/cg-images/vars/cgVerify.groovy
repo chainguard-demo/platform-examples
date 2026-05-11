@@ -28,7 +28,7 @@ def call(String image) {
   if (!image?.trim()) {
     error('cgVerify: image argument is required')
   }
-  if (!env.CHAINGUARD_ORG) error('cgVerify: env.CHAINGUARD_ORG is empty — JCasC globalNodeProperties should set it from the controller env (jenkins/casc/jenkins.yaml). Re-run setup.sh.')
+  if (!env.CHAINGUARD_ORG) error('cgVerify: env.CHAINGUARD_ORG is empty — JCasC globalNodeProperties should set it from the controller env (see ./jenkins/casc/jenkins.yaml under the jenkins/ subdir). Re-run setup.sh.')
   // Pass `image` through the sh step's environment rather than interpolating
   // it into the script body — see cgSign.groovy for the same reasoning.
   withEnv(["IMAGE=${image}"]) {

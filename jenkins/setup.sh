@@ -158,8 +158,13 @@ if [[ "${SKIP_PREFLIGHT:-0}" != "1" ]]; then
   # order so the printed list matches the array above.
   PREFLIGHT_RESULTS=$(mktemp)
   trap 'rm -f "$PREFLIGHT_RESULTS"' EXIT
+  # Export ORG so the `sh -c` invocations spawned by xargs see it via the
+  # environment rather than via shell-quoted splicing of "$ORG" into the
+  # script body — a CHAINGUARD_ORG value containing a quote or shell
+  # metacharacter would otherwise corrupt the probe command.
+  export ORG
   printf '%s\n' "${IMAGES_TO_CHECK[@]}" | xargs -P 8 -I {} sh -c '
-    if docker manifest inspect "cgr.dev/'"$ORG"'/{}" >/dev/null 2>&1; then
+    if docker manifest inspect "cgr.dev/${ORG}/{}" >/dev/null 2>&1; then
       echo "OK {}"
     else
       echo "FAIL {}"
@@ -228,15 +233,26 @@ if [[ ! -f "$COSIGN_DIR/cosign.key" ]]; then
     --entrypoint=/usr/bin/cosign \
     "cgr.dev/${ORG}/cosign:latest-dev" \
     generate-key-pair
-  # 644 so the Jenkins container (uid 1000) and the spawned cosign container
-  # can both read these regardless of the host's uid. The private key stays
-  # encrypted with COSIGN_PASSWORD, so world-readable is fine for a local demo.
-  chmod 644 "$COSIGN_DIR"/cosign.key "$COSIGN_DIR"/cosign.pub "$COSIGN_DIR"/cosign.password
   unset GEN_COSIGN_PASSWORD
   echo "    Keypair written to ${COSIGN_DIR}/cosign.{key,pub,password}"
 else
   echo "    Reusing existing keypair in ${COSIGN_DIR}/cosign.{key,pub,password}"
 fi
+# Apply perms unconditionally so re-runs upgrade older 644 cosign.password
+# files generated before this hardening:
+#   cosign.key/cosign.pub at 644 — JCasC (uid 1000 in the container) reads
+#     cosign.key at boot via `readFileBase64:`, and cgVerify mounts
+#     cosign.pub into a sibling cosign container. Both happen across the
+#     bind mount, so host perms must let uid 1000 read regardless of the
+#     host user's uid.
+#   cosign.password at 600 — nothing inside the container reads it off
+#     the bind mount; setup.sh below `cat`s it (as the host user) to
+#     export $COSIGN_PASSWORD, which docker-compose forwards into the
+#     controller env, and JCasC reads it from there. Pairing world-
+#     readable encrypted key with world-readable passphrase would defeat
+#     the encryption for any other local user.
+chmod 644 "$COSIGN_DIR"/cosign.key "$COSIGN_DIR"/cosign.pub
+chmod 600 "$COSIGN_DIR"/cosign.password
 
 # Export COSIGN_PASSWORD so docker compose forwards it into the Jenkins
 # container, where JCasC interpolates it into the `cosign-password` Secret
