@@ -39,7 +39,7 @@ services:
       COSIGN_PASSWORD: ${COSIGN_PASSWORD:-}
       JENKINS_HOME: /tmp/cgjenkins-home
       CASC_JENKINS_CONFIG: /tmp/cgjenkins-home/casc
-      JENKINS_ADMIN_PASSWORD: admin
+      JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD:-admin}
       # The docker CLI's config dir. Each pipeline's Auth stage runs
       # `chainctl auth configure-docker` which writes a fresh, short-lived
       # token here; subsequent agent docker steps reuse it.
