@@ -4,7 +4,7 @@ All images should be Chainguard sourced and pulled from cgr.dev/$CHAINGUARD_ORG 
 
 Setup scripts should be provided to quickly stand up the Jenkins environment for future demonstrations.
 
-Create sub-directories for the various sample applications with Jenkins pipeline files in them as if they were seperate repos in a real-world scenario.
+Create sub-directories for the various sample applications with Jenkins pipeline files in them as if they were separate repos in a real-world scenario.
 
 ## Sample applications to build (take these one at a time)
 - For each, make a simple "hello world" type application for each that also outputs info about the runtime environment (i.e. language version, env vars, etc)

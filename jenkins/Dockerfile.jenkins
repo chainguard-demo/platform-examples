@@ -7,8 +7,6 @@
 # CHAINGUARD_ORG must be set explicitly so that we don't accidentally build
 # against the wrong catalog. setup.sh prompts for this on first run.
 ARG CHAINGUARD_ORG
-
-ARG CHAINGUARD_ORG
 FROM cgr.dev/${CHAINGUARD_ORG}/docker-cli:29 AS docker
 
 # chainctl binary, used by pipelines (via the cgLogin shared-library var) to
