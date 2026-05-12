@@ -40,6 +40,13 @@ def call(String token) {
   // PULL_REGISTRY is set by JCasC globalNodeProperties (driven by setup.sh).
   // Defaults to cgr.dev/<org> for the no-Harbor case; switches to
   // localhost/cgr-proxy/<org> when Harbor is the active pull-through cache.
+  // Guard against both being empty — otherwise the fallback evaluates to
+  // the literal "cgr.dev/null" (Groovy stringifies a null reference inside
+  // a GString) and pipelines fail with confusing "manifest not found"
+  // errors instead of a clear "re-run setup.sh" message.
+  if (!env.PULL_REGISTRY && !env.CHAINGUARD_ORG) {
+    error('cgImage: both env.PULL_REGISTRY and env.CHAINGUARD_ORG are empty — JCasC globalNodeProperties should set at least one of these from the controller env (jenkins/jenkins/casc/jenkins.yaml). Re-run setup.sh.')
+  }
   def reg = env.PULL_REGISTRY ?: "cgr.dev/${env.CHAINGUARD_ORG}"
   def catalog = [
     'corretto-java17': [

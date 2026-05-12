@@ -347,6 +347,15 @@ update_env PUSH_REGISTRY  "$PUSH_REGISTRY"
 # only one knob to rotate.
 if [[ "$HARBOR_ENABLED" == "true" ]]; then
   HARBOR_ADMIN_PASSWORD="${HARBOR_ADMIN_PASSWORD:-Harbor12345}"
+  # Same sanitize/validate rules as the other prompted values — whitespace
+  # or quotes here would break .env sourcing, envsubst into the Helm
+  # values template, the harbor Terraform provider tfvar, and the base64
+  # auth string cgLogin builds for Mode C. The demo's threat model
+  # doesn't need passphrase-strength characters here (chart's default
+  # is `Harbor12345` and the cluster is localhost-only), so the
+  # restricted character set is acceptable.
+  HARBOR_ADMIN_PASSWORD=$(sanitize_env_value "$HARBOR_ADMIN_PASSWORD")
+  validate_env_value HARBOR_ADMIN_PASSWORD "$HARBOR_ADMIN_PASSWORD" || exit 1
   update_env HARBOR_ADMIN_PASSWORD "$HARBOR_ADMIN_PASSWORD"
 fi
 
