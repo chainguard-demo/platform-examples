@@ -32,6 +32,23 @@ fi
 JENKINS_URL="${JENKINS_URL:-http://localhost:8080}"
 JENKINS_OIDC_ISSUER="${JENKINS_OIDC_ISSUER:-https://localhost:8080/oidc}"
 
+# Fail fast with a clear list of what's missing, instead of hitting a
+# `command not found` mid-bootstrap. These are the tools both the direct-
+# cgr.dev path and the Harbor path need. Harbor-only tools (kind, kubectl,
+# helm, envsubst) are still checked separately by harbor/deploy.sh — no
+# point demanding them up front if the user picks the non-Harbor path.
+MISSING_TOOLS=()
+for tool in docker curl openssl python3 terraform chainctl; do
+  if ! command -v "$tool" >/dev/null 2>&1; then
+    MISSING_TOOLS+=("$tool")
+  fi
+done
+if (( ${#MISSING_TOOLS[@]} > 0 )); then
+  echo "ERROR: required tools not found in PATH: ${MISSING_TOOLS[*]}" >&2
+  echo "Install them and re-run ./setup.sh." >&2
+  exit 1
+fi
+
 prompt_yn() {
   # $1=question, $2=default ("y" or "n")
   local q="$1" def="$2" hint ans

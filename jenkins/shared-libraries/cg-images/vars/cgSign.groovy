@@ -58,16 +58,20 @@ def call(String image) {
     ]) {
       sh '''
         set -eu -o pipefail
-        # pipefail so a failing `docker image inspect` (e.g. image not in
-        # the local cache yet) is surfaced as the pipeline's exit status
-        # rather than masked by the trailing `head -1` returning 0.
+        # pipefail so a failing `docker image inspect` is surfaced as the
+        # pipeline's exit status rather than masked by the trailing
+        # `head -1` returning 0. Split the inspect from the grep/head
+        # filter so a grep-no-match (legitimate "no RepoDigest matches
+        # this repo yet" case) doesn't abort under set -e/pipefail
+        # before we can emit the friendly error below.
         # Pick the RepoDigest whose repo matches the image we just pushed.
         # The local image cache may have stale RepoDigests from prior runs
         # under different registries (e.g. localhost/library from a Mode C
         # session, ttl.sh from a Mode A session) — `{{index .RepoDigests 0}}`
         # returned whichever happened to be first and tripped cosign over.
         REPO="${IMAGE%:*}"
-        DIGEST=$(docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$IMAGE" | grep -F "${REPO}@" | head -1)
+        ALL_DIGESTS=$(docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$IMAGE")
+        DIGEST=$(printf '%s' "$ALL_DIGESTS" | grep -F "${REPO}@" | head -1 || true)
         if [ -z "$DIGEST" ]; then
           echo "cgSign: could not resolve digest for $IMAGE under repo $REPO (was it pushed?)." >&2
           exit 1
