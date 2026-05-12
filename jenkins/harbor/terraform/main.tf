@@ -7,14 +7,17 @@ terraform {
   }
 }
 
-# The Harbor admin password matches the Helm chart default. If you override
-# the chart value `harborAdminPassword`, change this too.
+# The Harbor admin password comes from a tfvar wired up by deploy.sh
+# (which reads HARBOR_ADMIN_PASSWORD from the env, defaulting to the chart's
+# own "Harbor12345" when unset). The same value is also fed into the Helm
+# chart's harborAdminPassword via values.template — both must agree or this
+# provider can't authenticate.
 # `insecure = true` skips TLS verification — the chart issues a self-signed
 # cert (see harbor/cg/helm/values.template for why we can't run HTTP).
 provider "harbor" {
   url      = "https://localhost"
   username = "admin"
-  password = "Harbor12345"
+  password = var.harbor_admin_password
   insecure = true
 }
 

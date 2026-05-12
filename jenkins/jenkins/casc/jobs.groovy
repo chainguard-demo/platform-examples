@@ -22,19 +22,19 @@ def apps = [
   ],
   [
     name: 'python314-uv-flask',
-    description: 'Flask app on Chainguard Python 3.14 with uv; archived as OCI image to ttl.sh',
+    description: 'Flask app on Chainguard Python 3.14 with uv; OCI image pushed to $PUSH_REGISTRY (ttl.sh in Modes A/B, Harbor in Mode C)',
   ],
   [
     name: 'python312-pip-django',
-    description: 'Django site on Chainguard Python 3.12 with pip; archived as OCI image to ttl.sh',
+    description: 'Django site on Chainguard Python 3.12 with pip; OCI image pushed to $PUSH_REGISTRY (ttl.sh in Modes A/B, Harbor in Mode C)',
   ],
   [
     name: 'node22-npm-express',
-    description: 'Express app on Chainguard Node 22 with npm; archived as OCI image to ttl.sh',
+    description: 'Express app on Chainguard Node 22 with npm; OCI image pushed to $PUSH_REGISTRY (ttl.sh in Modes A/B, Harbor in Mode C)',
   ],
   [
     name: 'node25-pnpm-express',
-    description: 'Express app on Chainguard Node 25 (slim runtime) with pnpm; archived as OCI image to ttl.sh',
+    description: 'Express app on Chainguard Node 25 (slim runtime) with pnpm; OCI image pushed to $PUSH_REGISTRY (ttl.sh in Modes A/B, Harbor in Mode C)',
   ],
 ]
 

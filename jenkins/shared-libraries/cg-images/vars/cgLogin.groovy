@@ -15,8 +15,10 @@
 //     Auth stage is effectively a no-op — we just print a status line.
 //
 //   Mode C (HARBOR_ENABLED=true, PUSH_REGISTRY=localhost/...):
-//     Same as Mode B for pulls. For pushes, write Harbor admin/Harbor12345
-//     into DOCKER_CONFIG/config.json so docker push to localhost/... works.
+//     Same as Mode B for pulls. For pushes, write Harbor admin creds
+//     (password from $HARBOR_ADMIN_PASSWORD — defaults to the chart's
+//     "Harbor12345") into DOCKER_CONFIG/config.json so docker push to
+//     localhost/... works.
 //
 // Usage — call from a stage on `agent any` (the controller) BEFORE any
 // stage that uses `agent { docker { image cgImage(...).build } }`:
@@ -38,6 +40,14 @@ def call() {
       // refs to 'localhost:80/...' before invoking cosign — which then looks
       // up auth keyed by 'localhost:80'. Docker push uses the bare 'localhost'
       // key. Keep both so both code paths find creds.
+      //
+      // The Harbor admin password comes from the HARBOR_ADMIN_PASSWORD env
+      // var (set by JCasC globalNodeProperties → docker-compose → .env). It
+      // defaults to "Harbor12345" — the chart's own default — when setup.sh
+      // hasn't seen a user override. Reading from env (rather than hardcoding
+      // the literal) keeps cgLogin in sync with the Helm chart and the
+      // Terraform provider, both of which read the same value.
+      if (!env.HARBOR_ADMIN_PASSWORD) error('cgLogin: env.HARBOR_ADMIN_PASSWORD is empty — JCasC should set it from the controller env in Mode C (see docker-compose.yml + .env). Re-run setup.sh.')
       sh '''
         set -eu
         mkdir -p "$DOCKER_CONFIG"
@@ -45,8 +55,10 @@ def call() {
         # even when GNU coreutils wraps at 76 chars (or appends a trailing
         # newline that survives an internal wrap). $(...) already trims the
         # final trailing newline but not internal ones, so this is a
-        # defensive guard for any future longer auth string.
-        AUTH=$(printf 'admin:Harbor12345' | base64 | tr -d '\n')
+        # defensive guard for any future longer auth string. Pass the
+        # password via env (not interpolated into the script body) so a
+        # passphrase containing shell metacharacters round-trips cleanly.
+        AUTH=$(printf '%s' "admin:$HARBOR_ADMIN_PASSWORD" | base64 | tr -d '\n')
         cat > "$DOCKER_CONFIG/config.json" <<EOF
 {
   "auths": {

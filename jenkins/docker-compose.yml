@@ -30,6 +30,12 @@ services:
       PULL_REGISTRY: ${PULL_REGISTRY:-cgr.dev/${CHAINGUARD_ORG}}
       PUSH_REGISTRY: ${PUSH_REGISTRY:-ttl.sh/smalls}
       HARBOR_ENABLED: ${HARBOR_ENABLED:-false}
+      # Harbor admin password — surfaced to pipelines via JCasC so cgLogin's
+      # Mode C path doesn't have to hardcode the chart default in source.
+      # setup.sh persists this in .env when Harbor is enabled; deploy.sh and
+      # the harbor Terraform provider read the same value from there. Empty
+      # when Harbor isn't in use — cgLogin only reads it on the Mode C path.
+      HARBOR_ADMIN_PASSWORD: ${HARBOR_ADMIN_PASSWORD:-}
       # NOTE: the cosign signing-key passphrase used to live here as
       # COSIGN_PASSWORD. JCasC now reads it directly off the bind-mounted
       # file at boot via `${readFile:/tmp/cgjenkins-home/.secrets/cosign.password}`,

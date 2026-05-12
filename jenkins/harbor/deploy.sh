@@ -22,9 +22,14 @@ cd "$(dirname "$0")"
 : "${PULL_USER:?PULL_USER must be set (Chainguard pull-token username)}"
 : "${PULL_PASS:?PULL_PASS must be set (Chainguard pull-token password)}"
 KIND_CLUSTER_NAME="${KIND_CLUSTER_NAME:-jenkins-harbor}"
+# Harbor admin password — defaults to the chart's own default so out-of-the-
+# box demos work, but can be overridden via setup.sh / .env. The same value
+# is consumed by the Helm values template and by Terraform's harbor provider.
+HARBOR_ADMIN_PASSWORD="${HARBOR_ADMIN_PASSWORD:-Harbor12345}"
 
 export ORG_NAME="${CHAINGUARD_ORG}"
 export REGISTRY_URL="cgr.dev/${CHAINGUARD_ORG}"
+export HARBOR_ADMIN_PASSWORD
 
 for tool in kind kubectl helm terraform envsubst; do
   if ! command -v "$tool" >/dev/null 2>&1; then
@@ -94,6 +99,6 @@ envsubst < terraform/terraform.templatevars > terraform/terraform.tfvars
 )
 
 echo "==> Done."
-echo "    Harbor UI:       https://localhost/harbor (admin / Harbor12345; click through cert warning)"
+echo "    Harbor UI:       https://localhost/harbor (admin / ${HARBOR_ADMIN_PASSWORD}; click through cert warning)"
 echo "    Proxy cache URL: localhost/cgr-proxy/${CHAINGUARD_ORG}/<image>:<tag>"
 echo "    Push project:    localhost/library/<image>:<tag>"

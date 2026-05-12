@@ -160,7 +160,7 @@ These bit me while building out the seven samples — useful to know up front wh
   - **Gradle**: `environment { GRADLE_USER_HOME = "${WORKSPACE}/.gradle" }`
   - **npm / pnpm**: `environment { HOME = "${WORKSPACE}" }`
 - **Chainguard's `python:3.x-dev` runs as uid 65532**, which can't write to the system site-packages. For pipelines that want to `pip install --system` or `uv pip install --system`, pass `args '--user 0 --entrypoint='` in the Jenkinsfile **and** add `USER 0` to the corresponding stage in the Dockerfile.
-- **OCI-image pipelines push to whatever `$PUSH_REGISTRY` resolves to**: `ttl.sh/<prefix>` in Modes A/B (anonymous, 24h TTL) or `localhost/library` in Mode C (Harbor admin/Harbor12345 baked in by `cgLogin`). Per-app `IMAGE` envs use `${env.PUSH_REGISTRY}/<app-name>:<tag>` — works for both ttl.sh and Harbor without per-mode pipeline edits.
+- **OCI-image pipelines push to whatever `$PUSH_REGISTRY` resolves to**: `ttl.sh/<prefix>` in Modes A/B (anonymous, 24h TTL) or `localhost/library` in Mode C (Harbor admin auth supplied by `cgLogin`, sourced from `$HARBOR_ADMIN_PASSWORD` — defaults to the chart's `Harbor12345`, overridable in `.env`). Per-app `IMAGE` envs use `${env.PUSH_REGISTRY}/<app-name>:<tag>` — works for both ttl.sh and Harbor without per-mode pipeline edits.
 - **The Auth stage must precede any `agent { docker { image '...' } }` stage**, because the docker-workflow plugin pulls the agent's image using whatever creds are in `$DOCKER_CONFIG` *at the start of that stage*. The current pipeline shape (`Auth` → `Checkout` → docker-agent stages) gets the ordering right; preserve it when adding new pipelines.
 
 ## Teardown

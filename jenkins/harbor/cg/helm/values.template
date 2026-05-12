@@ -13,6 +13,11 @@
 # so HTTP→HTTPS isn't forced — that lets `docker push` over HTTP coexist
 # with the HTTPS UI on the same ingress.
 externalURL: http://localhost
+# Admin password injected at deploy-template-render time from the host env.
+# deploy.sh defaults this to "Harbor12345" (the chart's own default) when
+# unset, so out-of-the-box demos still work. To override, set
+# HARBOR_ADMIN_PASSWORD in .env before running ./setup.sh.
+harborAdminPassword: "${HARBOR_ADMIN_PASSWORD}"
 expose:
   type: ingress
   tls:

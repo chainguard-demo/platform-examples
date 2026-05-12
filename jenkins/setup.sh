@@ -238,17 +238,24 @@ if [[ ! -f "$COSIGN_DIR/cosign.key" ]]; then
 else
   echo "    Reusing existing keypair in ${COSIGN_DIR}/cosign.{key,pub,password}"
 fi
-# All three files at 644 so JCasC (uid 1000 inside the Jenkins controller,
-# typically a different uid than the host user) can read them across the
-# bind mount via `${readFile:…}` / `${readFileBase64:…}` at boot. We used
-# to keep cosign.password at 600 — but that only worked because the
-# passphrase rode into the controller via the COSIGN_PASSWORD env var; we
-# dropped that path (it was visible to `docker inspect` and could leak
-# into build logs) in favour of reading the file directly. The local-demo
-# threat model is "single dev laptop, host user only"; for production
-# you'd want chown 1000:1000 + chmod 600 and a separate setup.sh path that
-# doesn't need to round-trip the password through host-side reads.
-chmod 644 "$COSIGN_DIR"/cosign.key "$COSIGN_DIR"/cosign.pub "$COSIGN_DIR"/cosign.password
+# Normalize ownership + perms via a one-shot root container so all three
+# files end up owned by uid 1000 (the Jenkins controller's uid) with mode
+# 600. JCasC reads them at boot via `${readFile:…}` / `${readFileBase64:…}`
+# across the bind mount as uid 1000 — file is owner-readable so that path
+# works. Setup.sh itself no longer needs to read these files (the cosign
+# passphrase is read directly by JCasC, not round-tripped through the host
+# env), so the host user losing read access is fine.
+#
+# Doing this in a container lets us chown to a uid we don't own without
+# requiring sudo on the host. Teardown.sh already falls back to sudo when
+# `rm -rf /tmp/cgjenkins-home` hits files owned by uid 1000 on Linux —
+# macOS bind-mounts squash ownership for the host user so plain rm works.
+echo "    Normalizing cosign secret ownership to uid 1000 + chmod 600..."
+docker run --rm --user 0:0 \
+  -v "$COSIGN_DIR:/work" \
+  --entrypoint=sh \
+  "cgr.dev/${ORG}/cosign:latest-dev" \
+  -c 'chown 1000:1000 /work/cosign.key /work/cosign.pub /work/cosign.password && chmod 600 /work/cosign.key /work/cosign.pub /work/cosign.password'
 
 # ---- Phase 1: write .env first so docker compose picks up the new mode ----
 
@@ -283,6 +290,16 @@ update_env CHAINGUARD_ORG "$ORG"
 update_env HARBOR_ENABLED "$HARBOR_ENABLED"
 update_env PULL_REGISTRY  "$PULL_REGISTRY"
 update_env PUSH_REGISTRY  "$PUSH_REGISTRY"
+# Persist the Harbor admin password if Harbor is enabled. Default to the
+# chart's own default ("Harbor12345") so an unmodified first-run works, but
+# allow user override by pre-setting HARBOR_ADMIN_PASSWORD in .env. Same
+# value drives the Helm chart, the Terraform harbor provider, and cgLogin's
+# Mode C push-auth — keeping them all wired off one env var means there's
+# only one knob to rotate.
+if [[ "$HARBOR_ENABLED" == "true" ]]; then
+  HARBOR_ADMIN_PASSWORD="${HARBOR_ADMIN_PASSWORD:-Harbor12345}"
+  update_env HARBOR_ADMIN_PASSWORD "$HARBOR_ADMIN_PASSWORD"
+fi
 
 # ---- Phase 2: (re)create Jenkins with the new env so its OIDC signing key
 #               is the one we'll upload to Chainguard in Phase 3. ----
@@ -329,6 +346,7 @@ EOF
 
   echo "==> Deploying Harbor (kind + Helm + Terraform)..."
   CHAINGUARD_ORG="$ORG" PULL_USER="$PULL_USER" PULL_PASS="$PULL_PASS" \
+    HARBOR_ADMIN_PASSWORD="$HARBOR_ADMIN_PASSWORD" \
     harbor/deploy.sh
 
   # In Harbor mode the Jenkins OIDC assumed identity isn't used at runtime,
@@ -373,11 +391,11 @@ case "$HARBOR_ENABLED-$PUSH_TO_HARBOR" in
   true-false)
     echo "    Mode: Harbor proxy cache for pulls (anonymous)."
     echo "    Pushes go to $PUSH_REGISTRY."
-    echo "    Harbor UI: https://localhost/harbor (admin / Harbor12345; click through cert warning)"
+    echo "    Harbor UI: https://localhost/harbor (admin / ${HARBOR_ADMIN_PASSWORD}; click through cert warning)"
     ;;
   true-true)
     echo "    Mode: Harbor for both pulls and pushes."
     echo "    Pushes land in Harbor's library project."
-    echo "    Harbor UI: https://localhost/harbor (admin / Harbor12345; click through cert warning)"
+    echo "    Harbor UI: https://localhost/harbor (admin / ${HARBOR_ADMIN_PASSWORD}; click through cert warning)"
     ;;
 esac

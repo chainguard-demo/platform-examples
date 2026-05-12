@@ -19,6 +19,12 @@ jenkins:
             value: ${PUSH_REGISTRY:-ttl.sh/smalls}
           - key: HARBOR_ENABLED
             value: ${HARBOR_ENABLED:-false}
+          # Surface the Harbor admin password to pipelines so cgLogin's
+          # Mode C path can read it from env.HARBOR_ADMIN_PASSWORD instead
+          # of hardcoding the chart default. Empty in Modes A/B; cgLogin
+          # only reads it on the Mode C push-auth path.
+          - key: HARBOR_ADMIN_PASSWORD
+            value: ${HARBOR_ADMIN_PASSWORD:-}
   securityRealm:
     local:
       allowsSignup: false

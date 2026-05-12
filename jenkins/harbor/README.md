@@ -55,6 +55,6 @@ export PULL_PASS=...
 ./deploy.sh
 ```
 
-The Harbor admin UI is at <https://localhost/harbor> (`admin` / `Harbor12345`). The chart issues a self-signed cert, so browsers will show a one-time warning — click through. Tear down with `./teardown.sh`.
+The Harbor admin UI is at <https://localhost/harbor>. The username is `admin`; the password is whatever `$HARBOR_ADMIN_PASSWORD` resolves to (default: the chart's `Harbor12345`; override by setting `HARBOR_ADMIN_PASSWORD` in `../.env` before running `../setup.sh`). The chart issues a self-signed cert, so browsers will show a one-time warning — click through. Tear down with `./teardown.sh`.
 
 > **Why HTTPS for the UI but HTTP for the registry?** Harbor 2.12.3+ ships with `gorilla/csrf` v1.7.3, which hardcodes the request scheme to `https` inside its origin check. Harbor's middleware doesn't compensate, so a plain-HTTP `POST /c/login` is rejected with `403 origin invalid` before the password is even checked (upstream bug: [goharbor/harbor#22010](https://github.com/goharbor/harbor/issues/22010)). The Docker daemon, in turn, refuses HTTPS connections to `127.0.0.0/8` by default, so the registry path (`/v2/`, `/service/token`, etc.) must remain reachable over HTTP. We split the two: TLS is enabled on the ingress for the UI, but `ssl-redirect` is off so HTTP isn't forced — the `externalURL` stays `http://localhost` so Harbor advertises HTTP to docker clients. Browser users type `https://`, pipelines push over `http://`, both work.

@@ -40,4 +40,4 @@ docker run --rm -p 8080:8080 $PUSH_REGISTRY/nodetest:22
 # Visit http://localhost:8080/
 ```
 
-ttl.sh tags expire (default 24 hours). Re-run the pipeline to refresh.
+If `$PUSH_REGISTRY` points at ttl.sh (Modes A/B), tags expire after the default 24 hours — re-run the pipeline to refresh. In Mode C the push goes to the local Harbor (`localhost/library/...`) and persists until teardown.
