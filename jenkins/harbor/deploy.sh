@@ -48,8 +48,15 @@ else
 fi
 
 echo "==> Rendering manifests with REGISTRY_URL=${REGISTRY_URL}..."
-envsubst < cg/manifests/deploy-ingress-nginx.template > cg/manifests/deploy-ingress-nginx.yaml
-envsubst < cg/helm/values.template               > cg/helm/values.yaml
+# Pass an explicit allowlist to envsubst so it only substitutes the variables
+# we intend to template. Without one it expands every `$VAR` in the file,
+# including anything `$FOO`-shaped that happens to appear inside a secret
+# (e.g. a future HARBOR_ADMIN_PASSWORD containing `$`) — corrupting the
+# rendered output. The allowlist syntax is `'$NAME1 $NAME2 ...'`.
+envsubst '$REGISTRY_URL' \
+  < cg/manifests/deploy-ingress-nginx.template > cg/manifests/deploy-ingress-nginx.yaml
+envsubst '$REGISTRY_URL $HARBOR_ADMIN_PASSWORD' \
+  < cg/helm/values.template > cg/helm/values.yaml
 
 # Namespaces (idempotent).
 kubectl get ns ingress-nginx >/dev/null 2>&1 || kubectl create ns ingress-nginx
@@ -92,7 +99,11 @@ done
 
 echo "==> Configuring Harbor with Terraform (cgr.dev proxy registry + cgr-proxy project)..."
 export PULL_USER PULL_PASS
-envsubst < terraform/terraform.templatevars > terraform/terraform.tfvars
+# Same allowlist treatment as the manifests above — keeps `$`-containing
+# secrets (e.g. HARBOR_ADMIN_PASSWORD, PULL_PASS) from being interpreted as
+# `$VAR` references and silently corrupting the tfvars output.
+envsubst '$ORG_NAME $PULL_USER $PULL_PASS $HARBOR_ADMIN_PASSWORD' \
+  < terraform/terraform.templatevars > terraform/terraform.tfvars
 ( cd terraform
   terraform init -input=false -upgrade
   terraform apply -input=false -auto-approve

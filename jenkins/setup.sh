@@ -358,6 +358,11 @@ if [[ "$HARBOR_ENABLED" == "true" ]]; then
   validate_env_value HARBOR_ADMIN_PASSWORD "$HARBOR_ADMIN_PASSWORD" || exit 1
   update_env HARBOR_ADMIN_PASSWORD "$HARBOR_ADMIN_PASSWORD"
 fi
+# Tighten .env perms unconditionally — once HARBOR_ADMIN_PASSWORD lands
+# here it's a secret, and any future variables we persist could be too.
+# 600 = host-user-only; both `bash source` and `docker compose --env-file`
+# only need the invoking user to read it.
+chmod 600 .env
 
 # ---- Phase 2: (re)create Jenkins with the new env so its OIDC signing key
 #               is the one we'll upload to Chainguard in Phase 3. ----

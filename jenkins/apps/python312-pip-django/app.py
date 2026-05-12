@@ -13,9 +13,18 @@ from django.urls import path
 
 settings.configure(
     DEBUG=False,
-    SECRET_KEY="demo-not-secret",
+    # Demo-only fallback. In any non-demo deployment, set DJANGO_SECRET_KEY
+    # in the environment — Django's signed cookies, password reset tokens,
+    # and CSRF tokens all derive from this key, so a static value defeats
+    # those protections.
+    SECRET_KEY=os.environ.get("DJANGO_SECRET_KEY", "demo-not-secret"),
     ROOT_URLCONF=__name__,
-    ALLOWED_HOSTS=["*"],
+    # Localhost + the test client's default host ("testserver") only.
+    # ALLOWED_HOSTS=["*"] would let the container respond to any Host
+    # header — a Host-header injection risk if the image ever escaped its
+    # localhost demo context. The pipeline's smoke test uses Client().get(),
+    # which sends Host: testserver, so we include that explicitly.
+    ALLOWED_HOSTS=["localhost", "127.0.0.1", "testserver"],
     INSTALLED_APPS=["django.contrib.contenttypes", "django.contrib.auth"],
     MIDDLEWARE=[],
     # In-memory SQLite — contrib.contenttypes and contrib.auth declare models
