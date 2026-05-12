@@ -95,9 +95,17 @@ EOF
   }
 
   // Mode A: OIDC chainctl flow.
-  def identity = readFile('/tmp/cgjenkins-home/shared-libraries/cg-images/IDENTITY').trim()
+  // Guard the readFile with fileExists so a missing IDENTITY file (e.g.
+  // pipeline run before setup.sh, or the shared-libraries bind mount not
+  // present) surfaces a clear, actionable error instead of a low-level
+  // Groovy exception from the readFile step.
+  def identityFile = '/tmp/cgjenkins-home/shared-libraries/cg-images/IDENTITY'
+  if (!fileExists(identityFile)) {
+    error('cgLogin: ' + identityFile + ' is missing — run setup.sh first (or set HARBOR_ENABLED=true to use the Harbor proxy cache).')
+  }
+  def identity = readFile(identityFile).trim()
   if (!identity) {
-    error('cgLogin: shared-libraries/cg-images/IDENTITY is empty — run setup.sh first (or set HARBOR_ENABLED=true to use the Harbor proxy cache).')
+    error('cgLogin: ' + identityFile + ' is empty — run setup.sh first (or set HARBOR_ENABLED=true to use the Harbor proxy cache).')
   }
   withCredentials([string(credentialsId: 'jenkins-cgr-oidc', variable: 'OIDC_TOKEN')]) {
     sh """

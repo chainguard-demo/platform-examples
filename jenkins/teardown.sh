@@ -89,7 +89,19 @@ echo "==> Cleaning generated files..."
 rm -rf .secrets
 rm -f  harbor/.pull-token
 rm -f  shared-libraries/cg-images/IDENTITY
-rm -rf iac/.terraform iac/terraform.tfstate iac/terraform.tfstate.backup iac/jenkins-jwks.json
+# Only wipe the iac/ Terraform state when destroy actually succeeded.
+# Preserving it on failure (or when destroy was skipped because
+# CHAINGUARD_ORG wasn't set) lets the user re-run ./teardown.sh after
+# fixing the cause and still have Terraform clean up the assumed identity
+# — without the state file there's no handle on the remote resource and
+# the identity gets orphaned. Harbor terraform state is independent (the
+# kind cluster gets blown away wholesale by harbor/teardown.sh), so we
+# clean it unconditionally.
+if (( TF_DESTROY_FAILED == 0 )); then
+  rm -rf iac/.terraform iac/terraform.tfstate iac/terraform.tfstate.backup iac/jenkins-jwks.json
+else
+  echo "    Preserving iac/terraform.tfstate so a future ./teardown.sh can retry the destroy."
+fi
 rm -rf harbor/terraform/.terraform harbor/terraform/terraform.tfstate harbor/terraform/terraform.tfstate.backup harbor/terraform/terraform.tfvars
 rm -f  harbor/cg/helm/values.yaml harbor/cg/manifests/deploy-ingress-nginx.yaml
 

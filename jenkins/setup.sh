@@ -263,6 +263,16 @@ echo "==> Writing mode flags to .env..."
 [[ -f .env ]] || cp .env.example .env
 update_env() {
   local key="$1" value="$2"
+  # Reject values containing a newline — they'd produce a .env line that
+  # docker-compose / JCasC env-var parsers would silently misinterpret
+  # (the value would terminate at the embedded newline and the remainder
+  # would be parsed as a separate key). docker-compose's dotenv format
+  # supports escaped/quoted multi-line values but JCasC's `${VAR}` resolver
+  # doesn't, so the safest rule is no newlines at all.
+  if [[ "$value" == *$'\n'* ]]; then
+    echo "ERROR: update_env value for ${key} contains a newline — refusing to corrupt .env." >&2
+    exit 1
+  fi
   # Rewrite .env line-by-line in pure bash rather than passing $value through
   # sed. A user-supplied registry/org could contain &, \, |, or other sed
   # special chars (the s/// replacement side treats & as the matched string
@@ -328,11 +338,19 @@ if [[ "$HARBOR_ENABLED" == "true" ]]; then
     source "$PULL_FILE"
   fi
   if [[ -z "${PULL_USER:-}" || -z "${PULL_PASS:-}" ]]; then
-    TOKEN_OUTPUT=$(chainctl auth pull-token create --parent="$ORG" --name="harbor-cgr-proxy" --ttl=720h)
-    PULL_USER=$(echo "$TOKEN_OUTPUT" | grep -oE -- '--username "[^"]+"' | head -1 | sed -E 's/--username "([^"]+)"/\1/')
-    PULL_PASS=$(echo "$TOKEN_OUTPUT" | grep -oE -- '--password "[^"]+"' | head -1 | sed -E 's/--password "([^"]+)"/\1/')
+    # Ask chainctl for machine-readable JSON rather than scraping the
+    # human-readable suggestion text (`--username "X" --password "Y"`) with
+    # grep+sed — that text is presentation, not contract, and would break
+    # silently if chainctl ever reformatted it. Today the JSON shape is
+    # { "id": "<uidp>", "password": "<jwt>" }; accept a couple of likely
+    # alternative key names for forward-compat. python3 parses without
+    # adding a jq dependency (we already use it for the JWKS validator).
+    TOKEN_JSON=$(chainctl auth pull-token create --parent="$ORG" --name="harbor-cgr-proxy" --ttl=720h -o json)
+    PULL_USER=$(printf '%s' "$TOKEN_JSON" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("id") or d.get("username") or "")')
+    PULL_PASS=$(printf '%s' "$TOKEN_JSON" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("password") or d.get("secret") or "")')
     if [[ -z "$PULL_USER" || -z "$PULL_PASS" ]]; then
-      echo "ERROR: failed to parse pull token from chainctl output." >&2
+      echo "ERROR: failed to extract id/password from chainctl pull-token JSON. Raw response:" >&2
+      echo "$TOKEN_JSON" >&2
       exit 1
     fi
     mkdir -p harbor
