@@ -49,7 +49,12 @@ pipeline {
           //      cgr.dev directly in Mode A, anonymous Harbor proxy in B/C.
           //      The docker-workflow plugin only carries env vars listed
           //      here into the agent container.
-          args "--entrypoint= --network host -e DOCKER_CONFIG=/tmp/cgjenkins-home/.docker -e CHAINGUARD_ORG=${env.CHAINGUARD_ORG} -e PULL_REGISTRY=${env.PULL_REGISTRY}"
+          // Use `?: ''` (not direct interpolation) so a missing env var
+          // collapses to empty rather than the literal "null" — Groovy
+          // GString stringifies a null reference, which would otherwise
+          // bake PULL_REGISTRY=null into the agent env and break the
+          // PULL_REGISTRY:-default fallback in refresh-digests.sh.
+          args "--entrypoint= --network host -e DOCKER_CONFIG=/tmp/cgjenkins-home/.docker -e CHAINGUARD_ORG=${env.CHAINGUARD_ORG ?: ''} -e PULL_REGISTRY=${env.PULL_REGISTRY ?: ''}"
           reuseNode true
         }
       }

@@ -52,7 +52,7 @@ registry:
       tag: latest
 
 trivy:
-  # enabled the flag to enable Trivy scanner
+  # Enable the Trivy vulnerability scanner.
   enabled: true
   image:
     repository: $REGISTRY_URL/harbor-trivy-adapter

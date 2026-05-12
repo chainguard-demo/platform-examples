@@ -61,8 +61,12 @@ EOF
       // Mode B: anonymous everywhere, nothing to write. PUSH_REGISTRY is
       // typically ttl.sh/<prefix> but setup.sh accepts any non-localhost
       // value, so log the actual target rather than hardcoding ttl.sh.
-      def pushDisplay = pushRegistry ?: '(unset)'
-      sh "echo 'cgLogin: Harbor mode, anonymous pulls + pushes to ${pushDisplay} (Mode B).'"
+      // Pass pushRegistry through the sh-step environment rather than
+      // interpolating into the script body — defends against shell
+      // metacharacters in a user-supplied PUSH_REGISTRY value.
+      withEnv(["PUSH_DISPLAY=${pushRegistry ?: '(unset)'}"]) {
+        sh 'echo "cgLogin: Harbor mode, anonymous pulls + pushes to $PUSH_DISPLAY (Mode B)."'
+      }
     }
     return
   }

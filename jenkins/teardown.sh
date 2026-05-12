@@ -42,12 +42,12 @@ read -rp "Continue? [y/N]: " ans
 # Source .env if present (for ORG / settings that affect cleanup).
 [[ -f .env ]] && { set -a; source .env; set +a; } || true
 
-echo "==> 1/5 Tearing down Harbor (kind cluster, if any)..."
+echo "==> Tearing down Harbor (kind cluster, if any)..."
 if [[ -x harbor/teardown.sh ]]; then
   harbor/teardown.sh
 fi
 
-echo "==> 2/5 Releasing Chainguard assumed identity (if Terraform state present)..."
+echo "==> Releasing Chainguard assumed identity (if Terraform state present)..."
 TF_DESTROY_FAILED=0
 if [[ -f iac/terraform.tfstate ]]; then
   if [[ -z "${CHAINGUARD_ORG:-}" ]]; then
@@ -71,10 +71,12 @@ if [[ -f iac/terraform.tfstate ]]; then
   fi
 fi
 
-echo "==> 3/5 Stopping Jenkins (docker compose down)..."
-docker compose down --rmi local --remove-orphans 2>&1 | tail -5
+echo "==> Stopping Jenkins (docker compose down)..."
+# Print full output; truncating with `tail -5` hides earlier errors that
+# would explain why compose-down failed.
+docker compose down --rmi local --remove-orphans
 
-echo "==> 4/5 Removing /tmp/cgjenkins-home..."
+echo "==> Removing /tmp/cgjenkins-home..."
 # On macOS + OrbStack the bind-mount is owned by the host user (no sudo).
 # On Linux it may be owned by uid 1000 from inside the container, which maps
 # to a different host user — fall back to sudo only when plain rm fails.
@@ -83,7 +85,7 @@ if ! rm -rf /tmp/cgjenkins-home 2>/dev/null; then
   sudo rm -rf /tmp/cgjenkins-home
 fi
 
-echo "==> 5/5 Cleaning generated files..."
+echo "==> Cleaning generated files..."
 rm -rf .secrets
 rm -f  harbor/.pull-token
 rm -f  shared-libraries/cg-images/IDENTITY

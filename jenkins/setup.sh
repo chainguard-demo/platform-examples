@@ -266,11 +266,28 @@ echo "==> Writing mode flags to .env..."
 [[ -f .env ]] || cp .env.example .env
 update_env() {
   local key="$1" value="$2"
-  if grep -q "^${key}=" .env; then
-    sed -i.bak "s|^${key}=.*|${key}=${value}|" .env && rm -f .env.bak
-  else
-    printf '%s=%s\n' "$key" "$value" >> .env
+  # Rewrite .env line-by-line in pure bash rather than passing $value through
+  # sed. A user-supplied registry/org could contain &, \, |, or other sed
+  # special chars (the s/// replacement side treats & as the matched string
+  # and \N as a backref), which would silently corrupt the .env. Building
+  # the file in a temp and atomically renaming avoids that whole class of bug.
+  local tmp
+  tmp=$(mktemp)
+  local found=0
+  if [[ -f .env ]]; then
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      if [[ "$line" == "${key}="* ]]; then
+        printf '%s=%s\n' "$key" "$value" >> "$tmp"
+        found=1
+      else
+        printf '%s\n' "$line" >> "$tmp"
+      fi
+    done < .env
   fi
+  if (( found == 0 )); then
+    printf '%s=%s\n' "$key" "$value" >> "$tmp"
+  fi
+  mv "$tmp" .env
 }
 update_env CHAINGUARD_ORG "$ORG"
 update_env HARBOR_ENABLED "$HARBOR_ENABLED"
