@@ -39,7 +39,6 @@ django.setup()
 
 
 def hello(request):
-    import django
     body = (
         "<h1>Hello from Django on Chainguard</h1>"
         "<h2>Runtime info</h2>"

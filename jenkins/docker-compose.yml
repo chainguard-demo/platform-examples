@@ -30,13 +30,11 @@ services:
       PULL_REGISTRY: ${PULL_REGISTRY:-cgr.dev/${CHAINGUARD_ORG}}
       PUSH_REGISTRY: ${PUSH_REGISTRY:-ttl.sh/smalls}
       HARBOR_ENABLED: ${HARBOR_ENABLED:-false}
-      # Cosign signing-key passphrase. setup.sh exports this from
-      # /tmp/cgjenkins-home/.secrets/cosign.password before bringing Jenkins
-      # up; JCasC interpolates it into the `cosign-password` credential at
-      # boot. Empty if setup.sh hasn't been run yet — Jenkins still boots,
-      # but pipelines that call cgSign() will fail with a clear "credential
-      # not found" error.
-      COSIGN_PASSWORD: ${COSIGN_PASSWORD:-}
+      # NOTE: the cosign signing-key passphrase used to live here as
+      # COSIGN_PASSWORD. JCasC now reads it directly off the bind-mounted
+      # file at boot via `${readFile:/tmp/cgjenkins-home/.secrets/cosign.password}`,
+      # so it never sits in the long-lived controller env (where it would
+      # show up in `docker inspect` and could leak into build logs).
       JENKINS_HOME: /tmp/cgjenkins-home
       CASC_JENKINS_CONFIG: /tmp/cgjenkins-home/casc
       JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD:-admin}

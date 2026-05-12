@@ -238,27 +238,17 @@ if [[ ! -f "$COSIGN_DIR/cosign.key" ]]; then
 else
   echo "    Reusing existing keypair in ${COSIGN_DIR}/cosign.{key,pub,password}"
 fi
-# Apply perms unconditionally so re-runs upgrade older 644 cosign.password
-# files generated before this hardening:
-#   cosign.key/cosign.pub at 644 — JCasC (uid 1000 in the container) reads
-#     cosign.key at boot via `readFileBase64:`, and cgVerify mounts
-#     cosign.pub into a sibling cosign container. Both happen across the
-#     bind mount, so host perms must let uid 1000 read regardless of the
-#     host user's uid.
-#   cosign.password at 600 — nothing inside the container reads it off
-#     the bind mount; setup.sh below `cat`s it (as the host user) to
-#     export $COSIGN_PASSWORD, which docker-compose forwards into the
-#     controller env, and JCasC reads it from there. Pairing world-
-#     readable encrypted key with world-readable passphrase would defeat
-#     the encryption for any other local user.
-chmod 644 "$COSIGN_DIR"/cosign.key "$COSIGN_DIR"/cosign.pub
-chmod 600 "$COSIGN_DIR"/cosign.password
-
-# Export COSIGN_PASSWORD so docker compose forwards it into the Jenkins
-# container, where JCasC interpolates it into the `cosign-password` Secret
-# Text credential at boot. The key + pub files are loaded directly by JCasC
-# via `${readFileBase64:…}` so they don't need to ride in env vars.
-export COSIGN_PASSWORD="$(cat "$COSIGN_DIR/cosign.password")"
+# All three files at 644 so JCasC (uid 1000 inside the Jenkins controller,
+# typically a different uid than the host user) can read them across the
+# bind mount via `${readFile:…}` / `${readFileBase64:…}` at boot. We used
+# to keep cosign.password at 600 — but that only worked because the
+# passphrase rode into the controller via the COSIGN_PASSWORD env var; we
+# dropped that path (it was visible to `docker inspect` and could leak
+# into build logs) in favour of reading the file directly. The local-demo
+# threat model is "single dev laptop, host user only"; for production
+# you'd want chown 1000:1000 + chmod 600 and a separate setup.sh path that
+# doesn't need to round-trip the password through host-side reads.
+chmod 644 "$COSIGN_DIR"/cosign.key "$COSIGN_DIR"/cosign.pub "$COSIGN_DIR"/cosign.password
 
 # ---- Phase 1: write .env first so docker compose picks up the new mode ----
 

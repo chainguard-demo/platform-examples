@@ -114,7 +114,15 @@ A clean build takes 10s–40s once images are cached locally; the Gradle pipelin
 The public key sits at `/tmp/cgjenkins-home/.secrets/cosign.pub`. To check a pushed image from outside Jenkins, run cosign in a host-network container so `localhost` resolves to your ingress:
 
 ```sh
-DIGEST=$(docker image inspect --format '{{index .RepoDigests 0}}' localhost/library/pytest:3-14)
+# Pick the RepoDigest whose repo matches the image you just pulled. A
+# single image can have multiple RepoDigests in the local cache (one per
+# registry/org it has been pushed to), and `{{index .RepoDigests 0}}`
+# returns whichever happens to be first — which may not match the repo
+# you want to verify. Filter by the repo prefix to be safe. cgSign and
+# cgVerify use the same pattern internally.
+IMAGE=localhost/library/pytest:3-14
+REPO="${IMAGE%:*}"
+DIGEST=$(docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$IMAGE" | grep -F "${REPO}@" | head -1)
 # cosign's reference parser rejects bare 'localhost' (it tries Docker Hub),
 # so rewrite to 'localhost:80' before passing to cosign:
 DIGEST="${DIGEST/#localhost\//localhost:80/}"

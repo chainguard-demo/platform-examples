@@ -110,7 +110,12 @@ credentials:
               scope: GLOBAL
               id: cosign-password
               description: "passphrase that decrypts cosign-private-key"
-              secret: "${COSIGN_PASSWORD}"
+              # Read the passphrase directly from the bind-mounted secret file
+              # rather than via the controller's env. Avoids leaving the
+              # passphrase visible to `docker inspect` and prevents accidental
+              # propagation into build logs (the env-var path used to be one
+              # `echo $COSIGN_PASSWORD` in a debug step away from disclosure).
+              secret: "${readFile:/tmp/cgjenkins-home/.secrets/cosign.password}"
 
 jobs:
   - file: /tmp/cgjenkins-home/casc/jobs.groovy
