@@ -41,16 +41,53 @@ prompt_yn() {
   [[ "$ans" =~ ^[Yy] ]]
 }
 
+# Strip leading/trailing whitespace from $1 and echo the result.
+sanitize_env_value() {
+  local v="$1"
+  v="${v#"${v%%[![:space:]]*}"}"
+  v="${v%"${v##*[![:space:]]}"}"
+  printf '%s' "$v"
+}
+
+# Validate a value about to be written to .env. Rejects empty, internal
+# whitespace, and quotes — all of which would either silently corrupt the
+# dotenv line (parsed by docker compose / JCasC / bash `source`) or be
+# easy footguns from a stray paste.
+validate_env_value() {
+  local name="$1" v="$2"
+  if [[ -z "$v" ]]; then
+    echo "    ERROR: $name must not be empty." >&2
+    return 1
+  fi
+  if [[ "$v" =~ [[:space:]] ]]; then
+    echo "    ERROR: $name must not contain whitespace (got: '$v')." >&2
+    return 1
+  fi
+  if [[ "$v" == *\"* || "$v" == *\'* ]]; then
+    echo "    ERROR: $name must not contain quotes (got: '$v')." >&2
+    return 1
+  fi
+  return 0
+}
+
 # Prompt for the Chainguard org if .env didn't supply one. The answer gets
 # persisted to .env in Phase 1 below, so subsequent re-runs go straight
 # through without prompting.
 if [[ -z "${CHAINGUARD_ORG:-}" ]]; then
   echo "==> No Chainguard org configured."
   echo "    Examples: 'chainguard' (public catalog) or 'your-org.example.com'."
-  while [[ -z "${CHAINGUARD_ORG:-}" ]]; do
+  while :; do
     read -rp "    Enter your Chainguard org: " CHAINGUARD_ORG
+    CHAINGUARD_ORG=$(sanitize_env_value "$CHAINGUARD_ORG")
+    if validate_env_value CHAINGUARD_ORG "$CHAINGUARD_ORG"; then break; fi
   done
   echo
+else
+  # Even values supplied via env / .env can have stray whitespace from a
+  # hand-edited dotenv — re-validate so the corruption surfaces here rather
+  # than mid-`terraform apply`.
+  CHAINGUARD_ORG=$(sanitize_env_value "$CHAINGUARD_ORG")
+  validate_env_value CHAINGUARD_ORG "$CHAINGUARD_ORG" || exit 1
 fi
 ORG="$CHAINGUARD_ORG"
 echo "==> Chainguard org: ${ORG}"
@@ -76,13 +113,15 @@ if [[ "$PUSH_TO_HARBOR" == "true" ]]; then
 else
   PUSH_REGISTRY_DEFAULT="${PUSH_REGISTRY:-}"
   PUSH_REGISTRY=""
-  while [[ -z "$PUSH_REGISTRY" ]]; do
+  while :; do
     if [[ -n "$PUSH_REGISTRY_DEFAULT" ]]; then
       read -rp "Where should pipelines push their built images? [last used: ${PUSH_REGISTRY_DEFAULT}]: " PUSH_REG_INPUT
       PUSH_REGISTRY="${PUSH_REG_INPUT:-$PUSH_REGISTRY_DEFAULT}"
     else
       read -rp "Where should pipelines push their built images? (e.g. ttl.sh/your-prefix): " PUSH_REGISTRY
     fi
+    PUSH_REGISTRY=$(sanitize_env_value "$PUSH_REGISTRY")
+    if validate_env_value PUSH_REGISTRY "$PUSH_REGISTRY"; then break; fi
   done
 fi
 

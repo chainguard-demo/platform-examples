@@ -36,7 +36,10 @@ def call(String image) {
       file(credentialsId: 'cosign-public-key', variable: 'COSIGN_PUB_FILE'),
     ]) {
       sh '''
-        set -eu
+        set -eu -o pipefail
+        # pipefail so a failing `docker image inspect` (e.g. image not in
+        # the local cache yet) is surfaced as the pipeline's exit status
+        # rather than masked by the trailing `head -1` returning 0.
         # Pick the RepoDigest whose repo matches the image we want to verify.
         # See cgSign.groovy for why .RepoDigests can have stale entries from
         # prior runs.

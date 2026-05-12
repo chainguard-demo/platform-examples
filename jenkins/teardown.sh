@@ -98,11 +98,11 @@ rm -f  shared-libraries/cg-images/IDENTITY
 # kind cluster gets blown away wholesale by harbor/teardown.sh), so we
 # clean it unconditionally.
 if (( TF_DESTROY_FAILED == 0 )); then
-  rm -rf iac/.terraform iac/terraform.tfstate iac/terraform.tfstate.backup iac/jenkins-jwks.json
+  rm -rf iac/.terraform iac/.terraform.lock.hcl iac/terraform.tfstate iac/terraform.tfstate.backup iac/jenkins-jwks.json
 else
-  echo "    Preserving iac/terraform.tfstate so a future ./teardown.sh can retry the destroy."
+  echo "    Preserving iac/terraform.tfstate (and .terraform.lock.hcl) so a future ./teardown.sh can retry the destroy."
 fi
-rm -rf harbor/terraform/.terraform harbor/terraform/terraform.tfstate harbor/terraform/terraform.tfstate.backup harbor/terraform/terraform.tfvars
+rm -rf harbor/terraform/.terraform harbor/terraform/.terraform.lock.hcl harbor/terraform/terraform.tfstate harbor/terraform/terraform.tfstate.backup harbor/terraform/terraform.tfvars
 rm -f  harbor/cg/helm/values.yaml harbor/cg/manifests/deploy-ingress-nginx.yaml
 
 if [[ "$WIPE_ENV" == "true" ]]; then

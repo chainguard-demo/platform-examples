@@ -57,7 +57,10 @@ def call(String image) {
       string(credentialsId: 'cosign-password',  variable: 'COSIGN_PASSWORD'),
     ]) {
       sh '''
-        set -eu
+        set -eu -o pipefail
+        # pipefail so a failing `docker image inspect` (e.g. image not in
+        # the local cache yet) is surfaced as the pipeline's exit status
+        # rather than masked by the trailing `head -1` returning 0.
         # Pick the RepoDigest whose repo matches the image we just pushed.
         # The local image cache may have stale RepoDigests from prior runs
         # under different registries (e.g. localhost/library from a Mode C
