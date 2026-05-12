@@ -9,7 +9,7 @@ Create a role that matches the registry.pull_token_creator role.
 > [!IMPORTANT]
 > If you want to enable pruning of expired pull tokens, you must add identity.list and identity.delete capabilities.
 
-`chainctl iam roles create artifactory --parent <your-organization> --capabilities apk.list,groups.list,identity.create,manifest.list,manifest.metadata.list,record_signatures.list,repo.list,role_bindings.create,roles.list,sboms.list,tag.list,vuln_reports.list,identity.list,identity.delete,apk.blobs.get,repo.blobs.get`
+`chainctl iam roles create artifactory --parent <your-organization> --capabilities apk.list,groups.list,identity.create,manifest.list,manifest.metadata.list,record_signatures.list,repo.list,role_bindings.create,roles.list,sboms.list,tag.list,vuln_reports.list,identity.list,identity.delete,apk.blobs.get,repo.blobs.get,referrers.list`
 
 
 Create the assumable identity
