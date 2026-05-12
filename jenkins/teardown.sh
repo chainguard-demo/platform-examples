@@ -73,8 +73,16 @@ fi
 
 echo "==> Stopping Jenkins (docker compose down)..."
 # Print full output; truncating with `tail -5` hides earlier errors that
-# would explain why compose-down failed.
-docker compose down --rmi local --remove-orphans
+# would explain why compose-down failed. Capture failure so we can still
+# clean up local state (the bind-mount and generated files), and surface
+# it at the end via the exit code — set -e on its own would abort here
+# and leave /tmp/cgjenkins-home + .secrets behind.
+COMPOSE_DOWN_FAILED=0
+docker compose down --rmi local --remove-orphans || COMPOSE_DOWN_FAILED=1
+if (( COMPOSE_DOWN_FAILED == 1 )); then
+  echo "    WARNING: docker compose down failed. Continuing with local-state cleanup;" >&2
+  echo "    re-run \`docker compose down --rmi local --remove-orphans\` after fixing the daemon." >&2
+fi
 
 echo "==> Removing /tmp/cgjenkins-home..."
 # On macOS + OrbStack the bind-mount is owned by the host user (no sudo).
@@ -111,8 +119,8 @@ if [[ "$WIPE_ENV" == "true" ]]; then
 fi
 
 echo
-if (( TF_DESTROY_FAILED == 1 )); then
-  echo "==> Done — WITH WARNINGS (terraform destroy was skipped or failed; see above)." >&2
+if (( TF_DESTROY_FAILED == 1 || COMPOSE_DOWN_FAILED == 1 )); then
+  echo "==> Done — WITH WARNINGS (terraform destroy and/or docker compose down failed/skipped; see above)." >&2
   echo "    Re-run ./setup.sh to bootstrap from scratch."
   exit 1
 fi

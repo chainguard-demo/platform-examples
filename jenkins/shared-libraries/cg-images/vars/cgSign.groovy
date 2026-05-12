@@ -82,10 +82,15 @@ def call(String image) {
           localhost/*) DIGEST="localhost:80/${DIGEST#localhost/}" ;;
         esac
         COSIGN_IMAGE="${PULL_REGISTRY:-cgr.dev/${CHAINGUARD_ORG}}/cosign:latest-dev"
+        # Pass COSIGN_PASSWORD by NAME (no =value) so docker inherits it from
+        # this shell's env instead of placing it on the docker-run command
+        # line — where it would briefly be visible via `ps` / docker event
+        # logs. withCredentials already exported COSIGN_PASSWORD into the
+        # shell env for us.
         docker run --rm --network host \
           -v "$COSIGN_KEY_FILE:/cosign.key:ro" \
           -v "$DOCKER_CONFIG:/jenkins-docker:ro" \
-          -e "COSIGN_PASSWORD=$COSIGN_PASSWORD" \
+          -e COSIGN_PASSWORD \
           -e DOCKER_CONFIG=/jenkins-docker \
           --entrypoint=/usr/bin/cosign \
           "$COSIGN_IMAGE" \

@@ -289,12 +289,18 @@ fi
 # requiring sudo on the host. Teardown.sh already falls back to sudo when
 # `rm -rf /tmp/cgjenkins-home` hits files owned by uid 1000 on Linux —
 # macOS bind-mounts squash ownership for the host user so plain rm works.
-echo "    Normalizing cosign secret ownership to uid 1000 + chmod 600..."
+echo "    Normalizing cosign secret ownership to uid 1000..."
+# cosign.key (signing key) and cosign.password (the key's passphrase) are
+# secrets — owner-only.
+# cosign.pub is the public key, used outside Jenkins for manual verify
+# (per the example in jenkins/README.md). Keep it world-readable so the
+# host user can read it through the bind mount without needing to run
+# `sudo cat` or a container helper.
 docker run --rm --user 0:0 \
   -v "$COSIGN_DIR:/work" \
   --entrypoint=sh \
   "cgr.dev/${ORG}/cosign:latest-dev" \
-  -c 'chown 1000:1000 /work/cosign.key /work/cosign.pub /work/cosign.password && chmod 600 /work/cosign.key /work/cosign.pub /work/cosign.password'
+  -c 'chown 1000:1000 /work/cosign.key /work/cosign.pub /work/cosign.password && chmod 600 /work/cosign.key /work/cosign.password && chmod 644 /work/cosign.pub'
 
 # ---- Phase 1: write .env first so docker compose picks up the new mode ----
 
