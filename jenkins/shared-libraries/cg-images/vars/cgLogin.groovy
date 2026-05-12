@@ -58,14 +58,25 @@ EOF
         echo "cgLogin: configured Harbor admin auth for localhost / localhost:80 (Mode C)."
       '''
     } else {
-      // Mode B: anonymous everywhere, nothing to write. PUSH_REGISTRY is
-      // typically ttl.sh/<prefix> but setup.sh accepts any non-localhost
-      // value, so log the actual target rather than hardcoding ttl.sh.
-      // Pass pushRegistry through the sh-step environment rather than
-      // interpolating into the script body — defends against shell
+      // Mode B: anonymous everywhere, no creds to write. We still mkdir
+      // $DOCKER_CONFIG eagerly so it exists with uid-1000 ownership before
+      // cgSign/cgVerify bind-mount it into a sibling cosign container — if
+      // the dir doesn't exist when `docker run -v "$DOCKER_CONFIG":...` runs,
+      // the host docker daemon auto-creates it as root, and a later switch
+      // to Mode A would then fail when chainctl (uid 1000 inside the
+      // controller) tries to write a fresh docker config there.
+      //
+      // PUSH_REGISTRY is typically ttl.sh/<prefix> but setup.sh accepts any
+      // non-localhost value, so log the actual target rather than hardcoding
+      // ttl.sh. Pass pushRegistry through the sh-step environment rather
+      // than interpolating into the script body — defends against shell
       // metacharacters in a user-supplied PUSH_REGISTRY value.
       withEnv(["PUSH_DISPLAY=${pushRegistry ?: '(unset)'}"]) {
-        sh 'echo "cgLogin: Harbor mode, anonymous pulls + pushes to $PUSH_DISPLAY (Mode B)."'
+        sh '''
+          set -eu
+          mkdir -p "$DOCKER_CONFIG"
+          echo "cgLogin: Harbor mode, anonymous pulls + pushes to $PUSH_DISPLAY (Mode B)."
+        '''
       }
     }
     return

@@ -5,6 +5,7 @@ container. Run `python app.py` to serve on 0.0.0.0:8080 (Django's runserver).
 import os
 import platform
 import sys
+import django
 from django.conf import settings
 from django.core.management import execute_from_command_line
 from django.http import HttpResponse
@@ -17,9 +18,24 @@ settings.configure(
     ALLOWED_HOSTS=["*"],
     INSTALLED_APPS=["django.contrib.contenttypes", "django.contrib.auth"],
     MIDDLEWARE=[],
-    DATABASES={},
+    # In-memory SQLite — contrib.contenttypes and contrib.auth declare models
+    # and need a `default` DB or app loading bombs out. We never touch the DB
+    # at request time (the hello view returns a constant), so :memory: is fine.
+    DATABASES={
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": ":memory:",
+        },
+    },
     USE_TZ=True,
 )
+
+# Initialise the app registry. `execute_from_command_line` (runserver path)
+# calls this internally, but the Test stage imports this module directly and
+# invokes django.test.Client without going through that codepath — without an
+# explicit setup() call the app registry stays unpopulated and the test fails
+# with AppRegistryNotReady the moment contrib.auth's signals fire.
+django.setup()
 
 
 def hello(request):
