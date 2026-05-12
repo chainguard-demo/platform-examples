@@ -11,10 +11,12 @@ All Jenkins infrastructure and all build/test/runtime images come from `cgr.dev/
 | [`corretto-java17-maven`](apps/corretto-java17-maven/)   | Spring Boot console app, Maven  | `maven:3-jdk17-dev`     | `amazon-corretto-jre:17`    | runnable JAR (Jenkins archive) |
 | [`adoptium-java8-jetty`](apps/adoptium-java8-jetty/)     | JSP web app, Maven, Jetty 9.4   | `maven:3-jdk8-dev`      | `adoptium-jre:adoptium-openjdk-8` | runnable WAR (Jenkins archive) |
 | [`openjdk21-gradle`](apps/openjdk21-gradle/)             | CLI app, Gradle 8.14            | `jdk:openjdk-21-dev`    | `jre:openjdk-21`            | runnable JAR (Jenkins archive) |
-| [`python314-uv-flask`](apps/python314-uv-flask/)         | Flask web app, `uv`             | `python:3.14-dev`       | `python:3.14`               | OCI image → `ttl.sh/smalls-pytest:3-14` |
-| [`python312-pip-django`](apps/python312-pip-django/)     | Django site, `pip`              | `python:3.12-dev`       | `python:3.12`               | OCI image → `ttl.sh/smalls-pytest:3-12` |
-| [`node22-npm-express`](apps/node22-npm-express/)         | Express web app, `npm`          | `node:22-dev`           | `node:22`                   | OCI image → `ttl.sh/smalls-nodetest:22` |
-| [`node25-pnpm-express`](apps/node25-pnpm-express/)       | Express web app, `pnpm`         | `node:25-dev`           | `node:25-slim`              | OCI image → `ttl.sh/smalls-nodetest:25` |
+| [`python314-uv-flask`](apps/python314-uv-flask/)         | Flask web app, `uv`             | `python:3.14-dev`       | `python:3.14`               | OCI image → `$PUSH_REGISTRY/pytest:3-14` |
+| [`python312-pip-django`](apps/python312-pip-django/)     | Django site, `pip`              | `python:3.12-dev`       | `python:3.12`               | OCI image → `$PUSH_REGISTRY/pytest:3-12` |
+| [`node22-npm-express`](apps/node22-npm-express/)         | Express web app, `npm`          | `node:22-dev`           | `node:22`                   | OCI image → `$PUSH_REGISTRY/nodetest:22` |
+| [`node25-pnpm-express`](apps/node25-pnpm-express/)       | Express web app, `pnpm`         | `node:25-dev`           | `node:25-slim`              | OCI image → `$PUSH_REGISTRY/nodetest:25` |
+
+> `$PUSH_REGISTRY` is set by `setup.sh` (and persisted in `.env`) — typically a `ttl.sh/<your-prefix>` for the public ttl.sh mode, or `localhost/library` when pushing to the optional Harbor mirror in Mode C.
 
 (Java pipelines archive their build artifact directly into Jenkins. Python/Node pipelines build an OCI image and push it to [ttl.sh](https://ttl.sh/) — an anonymous-push registry where tags expire after 24h. Re-run a pipeline to refresh.)
 
@@ -175,4 +177,3 @@ rm -rf .secrets harbor/.pull-token shared-libraries/cg-images/IDENTITY
 ## Notes
 
 - The DooD pattern means Jenkins effectively has root-equivalent access to the host machine via the Docker socket. This is acceptable for a local demo but not for production.
-- See [PLAN.md](PLAN.md) for the original sample-app spec.

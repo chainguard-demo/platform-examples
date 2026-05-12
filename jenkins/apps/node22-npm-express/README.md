@@ -1,10 +1,10 @@
 # node22-npm-express
 
-Hello-world Express web app on Chainguard's Node 22, with `npm` as the package manager. Pipeline artifact is an OCI image pushed to `ttl.sh/smalls-nodetest:22`.
+Hello-world Express web app on Chainguard's Node 22, with `npm` as the package manager. Pipeline artifact is an OCI image pushed to `$PUSH_REGISTRY/nodetest:22`.
 
 > `$CHAINGUARD_ORG` below stands in for your configured Chainguard org — see the top-level [README](../../README.md#configuration) for how that gets set.
 
-> Note: PLAN.md originally called for Node 21, but that line is EOL and not in the catalog. We use Node 22 LTS (the natural successor) instead.
+> Why Node 22 and not 21? Node 21 is EOL and not in the Chainguard catalog; 22 is the current LTS and the natural successor.
 
 ## Pipeline images
 
@@ -13,12 +13,12 @@ Hello-world Express web app on Chainguard's Node 22, with `npm` as the package m
 | Build deps  | `cgr.dev/$CHAINGUARD_ORG/node:22-dev` (ships `npm`) |
 | Image build | host docker daemon (multi-stage build) |
 | Test        | runs the just-built image |
-| Push        | `ttl.sh/smalls-nodetest:22` |
+| Push        | `$PUSH_REGISTRY/nodetest:22` |
 
 ## npm libraries used
 
 - `express` (web server)
-- `picocolors` (terminal coloring for the startup banner — included to satisfy PLAN.md's "include some kind of npm library" requirement with something visibly small and fun)
+- `picocolors` (terminal coloring for the startup banner — small, dependency-free, and visibly demonstrates that npm package install is wired up)
 
 ## Smoke test
 
@@ -35,8 +35,8 @@ This avoids opening any host port or routing across docker networks.
 ## Pull and run
 
 ```sh
-docker pull ttl.sh/smalls-nodetest:22
-docker run --rm -p 8080:8080 ttl.sh/smalls-nodetest:22
+docker pull $PUSH_REGISTRY/nodetest:22
+docker run --rm -p 8080:8080 $PUSH_REGISTRY/nodetest:22
 # Visit http://localhost:8080/
 ```
 

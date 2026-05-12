@@ -1,6 +1,6 @@
 # node25-pnpm-express
 
-Hello-world Express web app on Chainguard's Node 25, with `pnpm` as the package manager and `node:25-slim` as the runtime variant. Pipeline artifact is an OCI image pushed to `ttl.sh/smalls-nodetest:25`.
+Hello-world Express web app on Chainguard's Node 25, with `pnpm` as the package manager and `node:25-slim` as the runtime variant. Pipeline artifact is an OCI image pushed to `$PUSH_REGISTRY/nodetest:25`.
 
 > `$CHAINGUARD_ORG` below stands in for your configured Chainguard org — see the top-level [README](../../README.md#configuration) for how that gets set.
 
@@ -11,17 +11,17 @@ Hello-world Express web app on Chainguard's Node 25, with `pnpm` as the package 
 | Build deps  | `cgr.dev/$CHAINGUARD_ORG/node:25-dev` (ships pnpm 10.33) |
 | Image build | host docker daemon (multi-stage build) |
 | Test        | runs the just-built image |
-| Push        | `ttl.sh/smalls-nodetest:25` |
+| Push        | `$PUSH_REGISTRY/nodetest:25` |
 
 ## Why pnpm + slim?
 
 - **pnpm**: alternative package manager that uses a content-addressable store and symlinks. `pnpm install --prod --frozen-lockfile` installs only production deps and fails fast if `pnpm-lock.yaml` is out of sync with `package.json` — useful for CI reproducibility.
-- **slim**: PLAN.md called for the `node:25-slim` variant for the runtime layer. Same shell-less runtime as the regular tag but on a smaller base image.
+- **slim**: the `node:25-slim` runtime variant — same shell-less runtime as the regular tag, on a smaller base image. Pairs well with pnpm's leaner `node_modules` to keep the final OCI image compact.
 
 ## npm libraries used
 
 - `express` (web server)
-- `nanoid` (cryptographically random ID — used to generate a per-instance ID shown in the rendered HTML, satisfying PLAN.md's "include some kind of npm library" requirement)
+- `nanoid` (cryptographically random ID — used to generate a per-instance ID shown in the rendered HTML; demonstrates a real npm dep going through pnpm install)
 
 ## Smoke test
 
@@ -30,8 +30,8 @@ Same in-process self-request pattern as the Node 22 sibling — runs the runtime
 ## Pull and run
 
 ```sh
-docker pull ttl.sh/smalls-nodetest:25
-docker run --rm -p 8080:8080 ttl.sh/smalls-nodetest:25
+docker pull $PUSH_REGISTRY/nodetest:25
+docker run --rm -p 8080:8080 $PUSH_REGISTRY/nodetest:25
 # Visit http://localhost:8080/
 ```
 

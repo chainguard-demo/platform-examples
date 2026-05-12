@@ -1,6 +1,6 @@
 # python312-pip-django
 
-Hello-world Django site on Chainguard's Python 3.12, with `pip` as the package manager. The pipeline's archived artifact is an OCI image pushed to `ttl.sh/smalls-pytest:3-12`.
+Hello-world Django site on Chainguard's Python 3.12, with `pip` as the package manager. The pipeline's archived artifact is an OCI image pushed to `$PUSH_REGISTRY/pytest:3-12`.
 
 > `$CHAINGUARD_ORG` below stands in for your configured Chainguard org — see the top-level [README](../../README.md#configuration) for how that gets set.
 
@@ -11,7 +11,7 @@ Hello-world Django site on Chainguard's Python 3.12, with `pip` as the package m
 | Build deps  | `cgr.dev/$CHAINGUARD_ORG/python:3.12-dev` |
 | Image build | host docker daemon (multi-stage build) |
 | Test        | runs the just-built image |
-| Push        | `ttl.sh/smalls-pytest:3-12` |
+| Push        | `$PUSH_REGISTRY/pytest:3-12` |
 
 ## Single-file Django
 
@@ -24,8 +24,8 @@ Same trick as the Flask sibling: the runtime image is shell-less, so the Test st
 ## Pull and run
 
 ```sh
-docker pull ttl.sh/smalls-pytest:3-12
-docker run --rm -p 8080:8080 ttl.sh/smalls-pytest:3-12
+docker pull $PUSH_REGISTRY/pytest:3-12
+docker run --rm -p 8080:8080 $PUSH_REGISTRY/pytest:3-12
 # Visit http://localhost:8080/
 ```
 

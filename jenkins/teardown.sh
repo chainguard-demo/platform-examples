@@ -48,14 +48,26 @@ if [[ -x harbor/teardown.sh ]]; then
 fi
 
 echo "==> 2/5 Releasing Chainguard assumed identity (if Terraform state present)..."
+TF_DESTROY_FAILED=0
 if [[ -f iac/terraform.tfstate ]]; then
   if [[ -z "${CHAINGUARD_ORG:-}" ]]; then
     echo "    SKIPPING: CHAINGUARD_ORG not set in .env, can't run terraform destroy."
     echo "    The identity will linger; clean it up manually with chainctl iam identities delete."
+    TF_DESTROY_FAILED=1
   else
-    ( cd iac && terraform destroy -auto-approve \
+    # Don't abort the whole teardown if destroy fails — the remaining steps
+    # (stopping Jenkins, wiping /tmp/cgjenkins-home, removing local state)
+    # are still worth doing. But we DO surface the failure so the user knows
+    # to clean up the assumed identity manually, and we exit non-zero at the
+    # end so CI / scripted callers see it.
+    if ! ( cd iac && terraform destroy -auto-approve \
         -var="chainguard_group_name=${CHAINGUARD_ORG}" \
-        -var="jenkins_issuer_url=${JENKINS_OIDC_ISSUER:-https://localhost:8080/oidc}" || true )
+        -var="jenkins_issuer_url=${JENKINS_OIDC_ISSUER:-https://localhost:8080/oidc}" ); then
+      TF_DESTROY_FAILED=1
+      echo "    WARNING: terraform destroy failed. The Chainguard assumed identity may still exist." >&2
+      echo "    Inspect with: chainctl iam identities list --parent='${CHAINGUARD_ORG}'" >&2
+      echo "    Delete manually with: chainctl iam identities delete <id>" >&2
+    fi
   fi
 fi
 
@@ -85,4 +97,9 @@ if [[ "$WIPE_ENV" == "true" ]]; then
 fi
 
 echo
+if (( TF_DESTROY_FAILED == 1 )); then
+  echo "==> Done — WITH WARNINGS (terraform destroy was skipped or failed; see above)." >&2
+  echo "    Re-run ./setup.sh to bootstrap from scratch."
+  exit 1
+fi
 echo "==> Done. Re-run ./setup.sh to bootstrap from scratch."
