@@ -5,15 +5,17 @@ Workflow that will automate the creation and updating of pull tokens to allow cu
 For this workflow to run properly, you will need to create an [assumable identity](https://edu.chainguard.dev/chainguard/administration/custom-idps/custom-idps/) beforehand. It will need a role with the correctly scoped permissions.
 
 ## Creating the Role and Identity
-Create a role that matches the registry.pull_token_creator role. 
+Create a role for artifactory that can create and delete pull tokens.
 > [!IMPORTANT]
 > If you want to enable pruning of expired pull tokens, you must add identity.list and identity.delete capabilities.
 
-`chainctl iam roles create artifactory --parent <your-organization> --capabilities apk.list,groups.list,identity.create,manifest.list,manifest.metadata.list,record_signatures.list,repo.list,role_bindings.create,roles.list,sboms.list,tag.list,vuln_reports.list,identity.list,identity.delete,apk.blobs.get,repo.blobs.get`
+1. Create a role with identity.delete capabilities:
 
+`chainctl iam roles create token-delete --parent <your-organization> --capabilities identity.delete`
 
-Create the assumable identity
-`chainctl iam identities create github artifactory --github-repo=<your-repository> --parent=<your-organization> --role artifactory`
+2. Create the assumable identity and bind the token-delete role:
+
+`chainctl iam identities create github artifactory --github-repo=<your-repository> --parent=<your-organization> --role=token-delete,registry.pull_token_creator`
 
 
 ## Example Workflow
