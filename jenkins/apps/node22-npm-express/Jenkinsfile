@@ -95,7 +95,15 @@ const server = app.listen(0, '127.0.0.1', () => {
       agent any
       steps {
         sh 'docker push "$IMAGE"'
-        sh 'docker image inspect --format "Pushed {{.RepoTags}} digest={{index .RepoDigests 0}}" "$IMAGE"'
+        // Pick the RepoDigest matching the repo we just pushed. `{{index
+        // .RepoDigests 0}}` returns whichever digest happens to be first
+        // in the local cache, which may belong to an unrelated registry
+        // from a previous run. Same pattern as cgSign/cgVerify.
+        sh '''
+          REPO="${IMAGE%:*}"
+          DIGEST=$(docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$IMAGE" | grep -F "${REPO}@" | head -1)
+          echo "Pushed $IMAGE digest=$DIGEST"
+        '''
       }
     }
 
