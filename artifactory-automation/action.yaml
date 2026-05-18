@@ -12,19 +12,19 @@ inputs:
     required: true
 
   artifactory_url:
-    description: 'The url to your artifactory instance'
+    description: 'The URL to your Artifactory instance'
     required: true
 
   artifactory_user:
-    description: 'The username for artifactory'
+    description: 'The username for Artifactory'
     required: true
 
   artifactory_repository_name:
-    description: 'The name of the artifactory repository to update'
+    description: 'The name of the Artifactory repository to update'
     required: true
 
   artifactory_token:
-    description: 'API token for deployment'
+    description: 'Artifactory API token for deployment'
     required: true
 
   ttl:
@@ -33,7 +33,7 @@ inputs:
     default: 168h
 
   prune_expired:
-    description: 'Prune expired tokens (requires identity.list, identity.delete permissions)'
+    description: 'Prune expired Artifactory tokens (requires identity.list, identity.delete permissions)'
     required: false
     default: "false"
 
@@ -55,20 +55,22 @@ runs:
         TTL: ${{ inputs.ttl }}
         PRUNE: ${{ inputs.prune_expired }}
       run: |
-        if [[ $PRUNE = "true" ]]; then
+        if [[ "$PRUNE" = "true" ]]; then
           for id in $(chainctl iam identities list --parent "$ORGANIZATION" --name "pull token - registry" --expired -o json | jq -r '.items[]?.id'); do
+            [[ -n "$id" ]] || continue
             echo "Deleting old pull token $id"
-            chainctl iam identities delete $id --parent "$ORGANIZATION" -y
-          done 
+            chainctl iam identities delete "$id" --parent "$ORGANIZATION" -y
+          done
         fi
 
         PULL_TOKEN_JSON=$(chainctl auth pull-token --ttl "$TTL" --output json)
 
-        user=$(jq -r '.identity_id' <<<$PULL_TOKEN_JSON)
-        password=$(jq -r '.token' <<<$PULL_TOKEN_JSON)
+        user=$(jq -r '.identity_id' <<<"$PULL_TOKEN_JSON")
+        password=$(jq -r '.token' <<<"$PULL_TOKEN_JSON")
 
-        echo "user=$user" >> $GITHUB_OUTPUT
-        echo "password=$password" >> $GITHUB_OUTPUT
+        echo "user=$user" >> "$GITHUB_OUTPUT"
+        set +x
+        echo "password=$password" >> "$GITHUB_OUTPUT"
 
     - name: Update Artifactory Registry
       shell: bash
@@ -86,18 +88,18 @@ runs:
         -X POST \
         "$ARTIFACTORY_URL/artifactory/api/repositories/$ARTIFACTORY_REPOSITORY_NAME" \
         -H "Content-Type: application/json" \
-        -d '{
-          "key": "'$ARTIFACTORY_REPOSITORY_NAME'",
-          "username": "'$TOKEN_USER'",
-          "password": "'$TOKEN_PASSWORD'"
-        }')
+        -d "$(jq -n \
+          --arg key "$ARTIFACTORY_REPOSITORY_NAME" \
+          --arg user "$TOKEN_USER" \
+          --arg pass "$TOKEN_PASSWORD" \
+          '{"key":$key,"username":$user,"password":$pass}')")
 
-        BODY=$(echo $RESP | sed -e 's/HTTPSTATUS\:.*//g')
-        STATUS=$(echo $RESP | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+        BODY=$(echo "$RESP" | sed -e 's/HTTPSTATUS\:.*//g')
+        STATUS=$(echo "$RESP" | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
 
-        if [ "$STATUS" -ne 200 ]; then
-          echo "Error $STATUS": $BODY
+        if [[ "$STATUS" != '200' ]]; then
+          echo "Error ${STATUS}: $BODY"
           exit 1
         fi
 
-        echo $BODY
+        echo "$BODY"
