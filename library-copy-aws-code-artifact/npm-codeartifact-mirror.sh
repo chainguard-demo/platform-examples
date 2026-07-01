@@ -39,23 +39,17 @@ NPM_FETCH_TIMEOUT="${NPM_FETCH_TIMEOUT:-60000}"
 # CODEARTIFACT_REPOSITORY
 # CODEARTIFACT_DOMAIN_OWNER (optional, will use AWS account ID if not set)
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
-
 # Logging functions
 log() {
-    echo -e "${GREEN}[$(date +'%Y-%m-%d %H:%M:%S')]${NC} $1" | tee -a "$LOG_FILE"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
 }
 
 warn() {
-    echo -e "${YELLOW}[$(date +'%Y-%m-%d %H:%M:%S')] WARNING:${NC} $1" | tee -a "$LOG_FILE"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] WARNING: $1" | tee -a "$LOG_FILE"
 }
 
 error() {
-    echo -e "${RED}[$(date +'%Y-%m-%d %H:%M:%S')] ERROR:${NC} $1" | tee -a "$LOG_FILE"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] ERROR: $1" | tee -a "$LOG_FILE"
 }
 
 # Check required environment variables
@@ -200,8 +194,6 @@ check_package_in_codeartifact() {
 #   3 = 404 (package/version not currently served)
 #   4 = auth/permission error (401/403)
 #   1 = other failure (network, tarball-name mismatch, etc.)
-# Codes 2 and 3 are usually transient: Chainguard ingests upstream packages on
-# demand, so a retry after a short wait typically succeeds (see process_packages).
 download_package_from_chainguard() {
     local package_name=$1
     local version=$2

@@ -177,11 +177,11 @@ Packages that remain unavailable after all passes are classified in the summary 
 
 ## Output and Logging
 
-The script provides color-coded console output and writes detailed logs to the specified log file:
+The script prints timestamped console output and writes the same detailed logs to the specified log file. Messages are tagged by level so they stay readable in CI pipelines and log files:
 
-- **Green**: Informational messages
-- **Yellow**: Warnings (e.g., package not yet available in Chainguard)
-- **Red**: Errors
+- Informational messages are untagged (e.g. `[2026-05-11 10:30:15] Processing express@4.18.2...`)
+- **WARNING:** — warnings (e.g., package not yet available in Chainguard)
+- **ERROR:** — errors
 
 ### Example Output
 
