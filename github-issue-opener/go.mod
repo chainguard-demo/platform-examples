@@ -1,8 +1,6 @@
 module github.com/chainguard-dev/platform-examples/github-issue-opener
 
-go 1.21
-
-toolchain go1.21.0
+go 1.25.0
 
 replace github.com/chainguard-dev/platform-examples => ../
 
@@ -11,7 +9,7 @@ require (
 	github.com/cloudevents/sdk-go/v2 v2.15.2
 	github.com/google/go-github/v43 v43.0.0
 	github.com/kelseyhightower/envconfig v1.4.0
-	golang.org/x/oauth2 v0.22.0
+	golang.org/x/oauth2 v0.36.0
 )
 
 require (
