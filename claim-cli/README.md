@@ -8,6 +8,7 @@ Parse a Chainguard JWT or capabilities string into human readable tables.
 
 `claim-cli read AAAAAAAAAMH_8gDx4eD__vn--DBJ__tvlCHm8B_wHmMAAAAAAAAAAQ==`
 
+```
 ┌─────────────────────────────────────────┬────────────────┐
 │                 ENTITY                  │     ACTION     │
 ├─────────────────────────────────────────┼────────────────┤
@@ -19,12 +20,14 @@ Parse a Chainguard JWT or capabilities string into human readable tables.
 │ group_invites                           │ list           │
 │ group_invites                           │ delete         │
 .....
+```
 
 
 ### JWT Parsing
 
 `chainctl auth token | claim-cli read --jwt -`
 
+```
 ┌──────────────────────────────────────────┬─────────────────────────────────────────┬────────────────┐
 │                   ORG                    │                 ENTITY                  │     ACTION     │
 ├──────────────────────────────────────────┼─────────────────────────────────────────┼────────────────┤
@@ -39,3 +42,4 @@ Parse a Chainguard JWT or capabilities string into human readable tables.
 │ asdfasdfasdfasdfasdfasdfasdfasdfasdfasdf │ roles                                   │ update         │
 │ asdfasdfasdfasdfasdfasdfasdfasdfasdfasdf │ roles                                   │ list           │
 .....
+```
