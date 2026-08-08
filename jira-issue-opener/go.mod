@@ -1,8 +1,6 @@
 module github.com/chainguard-dev/platform-examples/jira-issue-opener
 
-go 1.21
-
-toolchain go1.21.0
+go 1.24.0
 
 replace github.com/chainguard-dev/platform-examples => ../
 
@@ -16,9 +14,8 @@ require (
 require (
 	github.com/coreos/go-oidc/v3 v3.7.0 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
-	github.com/go-jose/go-jose/v3 v3.0.3 // indirect
-	github.com/golang-jwt/jwt/v4 v4.4.2 // indirect
-	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/go-jose/go-jose/v3 v3.0.4 // indirect
+	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/uuid v1.4.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
@@ -28,8 +25,6 @@ require (
 	github.com/trivago/tgo v1.0.7 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
-	golang.org/x/crypto v0.19.0 // indirect
-	golang.org/x/oauth2 v0.14.0 // indirect
-	google.golang.org/appengine v1.6.8 // indirect
-	google.golang.org/protobuf v1.33.0 // indirect
+	golang.org/x/crypto v0.45.0 // indirect
+	golang.org/x/oauth2 v0.27.0 // indirect
 )
