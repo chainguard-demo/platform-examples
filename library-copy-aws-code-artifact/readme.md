@@ -322,6 +322,32 @@ cosign verify-attestation express-4.18.2.tgz \
   --certificate-identity-regexp "^https://github.com/.*/.github/workflows"
 ```
 
+To verify that packages moved into CodeArtifact were signed by Chainguard:
+```bash
+# Get the bundle associated with the artifact and pull out the SLSA provenance
+curl -fsS \
+  -H "Authorization: Bearer $(chainctl auth token --audience=libraries.cgr.dev)" \
+  'https://libraries.cgr.dev/javascript/-/npm/v1/attestations/tslib@2.8.1' \
+  |  jq '.attestations[]|select(.predicateType=="https://slsa.dev/provenance/v1").bundle' > npm-provenance.sigstore.json
+
+# Retrieve the tar file from AWS CodeArtifact
+aws codeartifact get-package-version-asset \
+    --domain "$CODEARTIFACT_DOMAIN" \
+    --repository "$CODEARTIFACT_REPOSITORY" \
+    --format npm \
+    --package tslib \
+    --package-version 2.8.1 \
+    --asset package.tgz \
+    tslib-2.8.1.tgz
+
+# Verify the SLSA Provenance signature against the downloaded tar file
+cosign verify-blob-attestation --bundle npm-provenance.sigstore.json \
+  --type slsaprovenance1 \
+  --certificate-oidc-issuer=https://issuer.enforce.dev \
+  --certificate-identity-regexp='^https://issuer\.enforce\.dev/' \
+  tslib-2.8.1.tgz
+```
+
 ## Using Mirrored Packages
 
 Configure your project to use CodeArtifact as the registry:
