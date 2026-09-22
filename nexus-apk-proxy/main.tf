@@ -7,14 +7,14 @@ locals {
 # the index proxy. Both reference the same regex.
 
 resource "sonatyperepo_routing_rule" "block_index" {
-  name        = "tf-chainguard-apk-block-index"
+  name        = "chainguard-apk-block-index"
   description = "Block APKINDEX.tar.gz paths from the packages proxy."
   mode        = "BLOCK"
   matchers    = [".*APKINDEX\\.tar\\.gz"]
 }
 
 resource "sonatyperepo_routing_rule" "only_index" {
-  name        = "tf-chainguard-apk-only-index"
+  name        = "chainguard-apk-only-index"
   description = "Restrict the index proxy to APKINDEX.tar.gz paths only."
   mode        = "ALLOW"
   matchers    = [".*APKINDEX\\.tar\\.gz"]
@@ -30,7 +30,7 @@ resource "sonatyperepo_routing_rule" "only_index" {
 # characters (%2B, %2F, %3D) in the presigned R2 URLs that apk.cgr.dev
 # redirects to, breaking the request signature.
 resource "sonatyperepo_repository_raw_proxy" "packages" {
-  name         = "tf-chainguard-apk-packages"
+  name         = "chainguard-apk-packages"
   online       = true
   routing_rule = sonatyperepo_routing_rule.block_index.name
 
@@ -73,7 +73,7 @@ resource "sonatyperepo_repository_raw_proxy" "packages" {
 # MANUAL STEP REQUIRED: Same as above — enable "Preserve encoded characters in
 # URLs" for chainguard-apk-index in the Nexus UI after applying.
 resource "sonatyperepo_repository_raw_proxy" "index" {
-  name         = "tf-chainguard-apk-index"
+  name         = "chainguard-apk-index"
   online       = true
   routing_rule = sonatyperepo_routing_rule.only_index.name
 
@@ -112,7 +112,7 @@ resource "sonatyperepo_repository_raw_proxy" "index" {
 # Packages proxy is listed first so its routing rule (BLOCK on APKINDEX) fires
 # before the request falls through to the index proxy.
 resource "sonatyperepo_repository_raw_group" "group" {
-  name   = "tf-chainguard-apk"
+  name   = "chainguard-apk"
   online = true
 
   storage = {
