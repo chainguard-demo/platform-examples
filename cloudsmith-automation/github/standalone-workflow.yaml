@@ -1,0 +1,104 @@
+name: Rotate Cloudsmith Pull Token
+
+on:
+  workflow_dispatch:
+  # Uncomment to rotate automatically (weekly, Sunday 00:00 UTC).
+  # Keep the schedule shorter than TTL.
+  # schedule:
+  #   - cron: "0 0 * * 0"
+
+permissions:
+  contents: read
+
+jobs:
+  rotate:
+    name: Rotate
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      # Set these as repository variables (Settings > Secrets and variables > Actions > Variables)
+      ORGANIZATION: ${{ vars.CHAINGUARD_ORGANIZATION }}
+      CLOUDSMITH_ORG_NAME: ${{ vars.CLOUDSMITH_ORG_NAME }}
+      CLOUDSMITH_REPOSITORY_NAME: ${{ vars.CLOUDSMITH_REPOSITORY_NAME }}
+      CLOUDSMITH_UPSTREAM_NAME: ${{ vars.CLOUDSMITH_UPSTREAM_NAME }}
+      TTL: 168h
+      PRUNE: "true"
+
+    steps:
+      - name: "Auth"
+        uses: chainguard-dev/setup-chainctl@272698817627c158bbd813cb783b62a4b9bbbc67
+        with:
+          identity: ${{ vars.CHAINGUARD_IDENTITY }}
+
+      - name: Create Token
+        shell: bash
+        id: create_token
+        run: |
+          TOKEN_NAME="docker-cloudsmith-${CLOUDSMITH_REPOSITORY_NAME}-${CLOUDSMITH_UPSTREAM_NAME}"
+
+          if [[ "$PRUNE" = "true" ]]; then
+            for id in $(chainctl iam identities list --parent "$ORGANIZATION" --name "$TOKEN_NAME" --expired -o json | jq -r '.items[]?.id'); do
+              [[ -n "$id" ]] || continue
+              echo "Deleting old pull token $id"
+              chainctl iam identities delete "$id" --parent "$ORGANIZATION" -y
+            done
+          fi
+
+          PULL_TOKEN_JSON=$(chainctl auth pull-token --ttl "$TTL" --output json --parent "$ORGANIZATION" --name "$TOKEN_NAME")
+
+          user=$(jq -r '.identity_id' <<<"$PULL_TOKEN_JSON")
+          password=$(jq -r '.token' <<<"$PULL_TOKEN_JSON")
+          echo "::add-mask::$password"
+
+          echo "user=$user" >> "$GITHUB_OUTPUT"
+          echo "password=$password" >> "$GITHUB_OUTPUT"
+
+      - name: Update Cloudsmith Upstream
+        shell: bash
+        env:
+          TOKEN_USER: ${{ steps.create_token.outputs.user }}
+          TOKEN_PASSWORD: ${{ steps.create_token.outputs.password }}
+          CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
+        run: |
+          # Look up the upstream's slug_perm by name
+          SLUG_PERM=$(curl --silent --fail \
+               --request GET \
+               --url "https://api.cloudsmith.io/v1/repos/$CLOUDSMITH_ORG_NAME/$CLOUDSMITH_REPOSITORY_NAME/upstream/docker/?page_size=100" \
+               --header "accept: application/json" \
+               --header @<(printf 'X-Api-Key: %s\n' "$CLOUDSMITH_API_KEY") \
+            | jq -r --arg name "$CLOUDSMITH_UPSTREAM_NAME" '.[] | select(.name == $name) | .slug_perm')
+
+          if [[ -z "$SLUG_PERM" ]]; then
+            echo "Error: no Docker upstream named '$CLOUDSMITH_UPSTREAM_NAME' found"
+            exit 1
+          fi
+
+          # Update the upstream with the new pull token
+          # Secrets are read from env and sent via stdin / fd so they never appear in the process list
+          RESP=$(jq -n '{
+                   "auth_secret": env.TOKEN_PASSWORD,
+                   "auth_username": env.TOKEN_USER,
+                   "name": env.CLOUDSMITH_UPSTREAM_NAME,
+                   "upstream_url": "https://cgr.dev"
+                 }' \
+            | curl --silent --write-out "HTTPSTATUS:%{http_code}" \
+               --request PUT \
+               --url "https://api.cloudsmith.io/v1/repos/$CLOUDSMITH_ORG_NAME/$CLOUDSMITH_REPOSITORY_NAME/upstream/docker/$SLUG_PERM/" \
+               --header "accept: application/json" \
+               --header "content-type: application/json" \
+               --header @<(printf 'X-Api-Key: %s\n' "$CLOUDSMITH_API_KEY") \
+               --data @-)
+
+          BODY=$(echo "$RESP" | sed -e 's/HTTPSTATUS\:.*//g')
+          STATUS=$(echo "$RESP" | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+
+          if [[ "$STATUS" != '200' ]]; then
+            echo "Error ${STATUS}: $BODY"
+            exit 1
+          fi
+
+          echo "Upstream '$CLOUDSMITH_UPSTREAM_NAME' updated"

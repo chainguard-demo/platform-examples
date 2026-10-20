@@ -1,0 +1,98 @@
+# Rotate the Chainguard pull token used by a Cloudsmith Docker upstream.
+#
+# Set these as CI/CD variables (Settings > CI/CD > Variables):
+#   CLOUDSMITH_API_KEY          (masked, protected)
+#   CHAINGUARD_IDENTITY         assumable identity UIDP
+#   CHAINGUARD_ORGANIZATION
+#   CLOUDSMITH_ORG_NAME
+#   CLOUDSMITH_REPOSITORY_NAME
+#   CLOUDSMITH_UPSTREAM_NAME
+
+stages:
+  - rotate
+
+rotate-cloudsmith-token:
+  stage: rotate
+  image: cgr.dev/chainguard/wolfi-base:latest
+
+  rules:
+    # Manual run: Build > Pipelines > Run pipeline
+    - if: $CI_PIPELINE_SOURCE == "web"
+    # Uncomment to rotate on a pipeline schedule (Build > Pipeline schedules).
+    # Keep the schedule shorter than TTL.
+    # - if: $CI_PIPELINE_SOURCE == "schedule"
+
+  id_tokens:
+    ID_TOKEN:
+      aud: https://gitlab.com
+
+  variables:
+    TTL: 168h
+    PRUNE: "true"
+
+  script:
+    - apk add --no-cache bash curl jq
+    - |
+      bash -euo pipefail <<'EOF'
+      # Install chainctl
+      curl -fsSL -o /usr/bin/chainctl "https://dl.enforce.dev/chainctl/latest/chainctl_linux_$(uname -m)"
+      chmod +x /usr/bin/chainctl
+
+      # Assume the Chainguard identity
+      chainctl auth login --identity-token "$ID_TOKEN" --identity "$CHAINGUARD_IDENTITY"
+
+      # Create the pull token
+      TOKEN_NAME="docker-cloudsmith-${CLOUDSMITH_REPOSITORY_NAME}-${CLOUDSMITH_UPSTREAM_NAME}"
+
+      if [[ "$PRUNE" = "true" ]]; then
+        for id in $(chainctl iam identities list --parent "$CHAINGUARD_ORGANIZATION" --name "$TOKEN_NAME" --expired -o json | jq -r '.items[]?.id'); do
+          [[ -n "$id" ]] || continue
+          echo "Deleting old pull token $id"
+          chainctl iam identities delete "$id" --parent "$CHAINGUARD_ORGANIZATION" -y
+        done
+      fi
+
+      PULL_TOKEN_JSON=$(chainctl auth pull-token --ttl "$TTL" --output json --parent "$CHAINGUARD_ORGANIZATION" --name "$TOKEN_NAME")
+
+      export TOKEN_USER=$(jq -r '.identity_id' <<<"$PULL_TOKEN_JSON")
+      export TOKEN_PASSWORD=$(jq -r '.token' <<<"$PULL_TOKEN_JSON")
+
+      # Look up the upstream's slug_perm by name
+      SLUG_PERM=$(curl --silent --fail \
+           --request GET \
+           --url "https://api.cloudsmith.io/v1/repos/$CLOUDSMITH_ORG_NAME/$CLOUDSMITH_REPOSITORY_NAME/upstream/docker/?page_size=100" \
+           --header "accept: application/json" \
+           --header @<(printf 'X-Api-Key: %s\n' "$CLOUDSMITH_API_KEY") \
+        | jq -r --arg name "$CLOUDSMITH_UPSTREAM_NAME" '.[] | select(.name == $name) | .slug_perm')
+
+      if [[ -z "$SLUG_PERM" ]]; then
+        echo "Error: no Docker upstream named '$CLOUDSMITH_UPSTREAM_NAME' found"
+        exit 1
+      fi
+
+      # Update the upstream with the new pull token
+      # Secrets are read from env and sent via stdin / fd so they never appear in the process list
+      RESP=$(jq -n '{
+               "auth_secret": env.TOKEN_PASSWORD,
+               "auth_username": env.TOKEN_USER,
+               "name": env.CLOUDSMITH_UPSTREAM_NAME,
+               "upstream_url": "https://cgr.dev"
+             }' \
+        | curl --silent --write-out "HTTPSTATUS:%{http_code}" \
+           --request PUT \
+           --url "https://api.cloudsmith.io/v1/repos/$CLOUDSMITH_ORG_NAME/$CLOUDSMITH_REPOSITORY_NAME/upstream/docker/$SLUG_PERM/" \
+           --header "accept: application/json" \
+           --header "content-type: application/json" \
+           --header @<(printf 'X-Api-Key: %s\n' "$CLOUDSMITH_API_KEY") \
+           --data @-)
+
+      BODY=$(echo "$RESP" | sed -e 's/HTTPSTATUS\:.*//g')
+      STATUS=$(echo "$RESP" | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+
+      if [[ "$STATUS" != '200' ]]; then
+        echo "Error ${STATUS}: $BODY"
+        exit 1
+      fi
+
+      echo "Upstream '$CLOUDSMITH_UPSTREAM_NAME' updated"
+      EOF
