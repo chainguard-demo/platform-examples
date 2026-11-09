@@ -8,7 +8,7 @@ require (
 	chainguard.dev/sdk v0.1.14
 	github.com/cloudevents/sdk-go/v2 v2.15.2
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/slack-go/slack v0.23.1
+	github.com/slack-go/slack v0.35.0
 	k8s.io/api v0.37.2
 )
 
